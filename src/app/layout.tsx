@@ -1,28 +1,45 @@
-import type { ReactNode } from "react";
+import React, { type ReactNode } from "react";
+import { Cormorant_Garamond, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import "./globals.css";
+import { SiteFooter } from "@/components/layout/site-footer";
+import { SiteHeader } from "@/components/layout/site-header";
 
 export const metadata = {
   title: "Skills Hub",
   description: "Submit, review, and publish vetted skills."
 };
 
+const displayFont = Cormorant_Garamond({
+  subsets: ["latin"],
+  variable: "--font-display",
+  weight: ["500", "600", "700"]
+});
+
+const bodyFont = IBM_Plex_Sans({
+  subsets: ["latin"],
+  variable: "--font-body",
+  weight: ["400", "500", "600"]
+});
+
+const monoFont = IBM_Plex_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  weight: ["400", "500"]
+});
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-paper text-ink antialiased">
-        <div className="min-h-screen border-t-4 border-signal">
-          <header className="px-6 py-8 flex justify-between items-center">
-            <div>
-              <p className="text-xs uppercase tracking-[0.4em] text-signal">skills hub</p>
-              <h1 className="font-display text-3xl">Editorial Archive</h1>
-            </div>
-            <a
-              href="/submit"
-              className="rounded-full border border-signal px-4 py-2 font-semibold text-sm transition hover:bg-signal hover:text-white"
-            >
-              Submit a Skill
-            </a>
-          </header>
-          <main className="px-6 pb-12">{children}</main>
+      <body
+        className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable} bg-paper text-ink antialiased`}
+      >
+        <div className="site-frame">
+          <div className="site-grid" />
+          <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-8 pt-4 sm:px-6 lg:px-8">
+            <SiteHeader />
+            <main className="flex-1 pb-16 pt-8">{children}</main>
+            <SiteFooter />
+          </div>
         </div>
       </body>
     </html>

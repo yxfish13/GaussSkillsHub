@@ -7,7 +7,7 @@
       "ESNext"
     ],
     "module": "ESNext",
-    "moduleResolution": "NodeNext",
+    "moduleResolution": "Bundler",
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -17,17 +17,8 @@
     "jsx": "preserve",
     "baseUrl": ".",
     "paths": {
-      "@/components/*": [
-        "src/components/*"
-      ],
-      "@/lib/*": [
-        "src/lib/*"
-      ],
-      "@/app/*": [
-        "src/app/*"
-      ],
-      "@/styles/*": [
-        "src/styles/*"
+      "@/*": [
+        "./src/*"
       ]
     },
     "allowJs": true,

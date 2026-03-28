@@ -3,14 +3,83 @@
 @tailwind utilities;
 
 :root {
-  font-family: "Source Serif 4", serif;
-  background-color: #f4efe5;
-  color: #171717;
+  --paper: #f4efe5;
+  --paper-shadow: #e1d7c5;
+  --ink: #171717;
+  --muted: #54483d;
+  --signal: #c6521b;
+  --line: rgba(23, 23, 23, 0.14);
+  --font-display: "Cormorant Garamond", serif;
+  --font-body: "IBM Plex Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at top right, rgba(198, 82, 27, 0.15), transparent 40%),
-    #f4efe5;
+  background:
+    radial-gradient(circle at top right, rgba(198, 82, 27, 0.2), transparent 32%),
+    radial-gradient(circle at bottom left, rgba(74, 53, 39, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0)),
+    var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: rgba(198, 82, 27, 0.18);
+}
+
+.site-frame {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.site-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(23, 23, 23, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(23, 23, 23, 0.045) 1px, transparent 1px);
+  background-size: 96px 96px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.3), transparent 85%);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+.bg-paper {
+  background-color: var(--paper);
+}
+
+.text-ink {
+  color: var(--ink);
+}
+
+.text-muted {
+  color: var(--muted);
+}
+
+.text-signal {
+  color: var(--signal);
+}
+
+.border-line {
+  border-color: var(--line);
 }

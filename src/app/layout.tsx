@@ -5,8 +5,8 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 
 export const metadata = {
-  title: "Skills Hub",
-  description: "Submit, review, and publish vetted skills."
+  title: "Gauss Skills Hub",
+  description: "公开提交、版本演进、按热度发现 Skills。"
 };
 
 const displayFont = Cormorant_Garamond({
@@ -29,7 +29,7 @@ const monoFont = IBM_Plex_Mono({
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="zh-CN">
       <body
         className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable} bg-paper text-ink antialiased`}
       >

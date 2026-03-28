@@ -15,8 +15,8 @@ export function VersionSwitcher({ skillSlug, currentVersion, versions }: Version
   return (
     <aside className="space-y-3 rounded-[24px] border border-line bg-white/60 p-5">
       <div className="space-y-1">
-        <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-signal">Version History</p>
-        <p className="text-sm leading-6 text-muted">Approved releases remain publicly readable.</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-signal">历史版本</p>
+        <p className="text-sm leading-6 text-muted">所有公开版本都会保留，可随时切换查看。</p>
       </div>
 
       <div className="space-y-2">

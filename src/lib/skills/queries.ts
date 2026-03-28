@@ -1,6 +1,8 @@
 import { SkillVersionStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
+export type SkillSort = "downloads" | "updated" | "created";
+
 export type SkillCardRecord = {
   id: string;
   slug: string;
@@ -8,6 +10,8 @@ export type SkillCardRecord = {
   summary: string;
   version: string;
   coverImagePath: string | null;
+  totalDownloadCount: number;
+  createdAt: string;
   updatedAt: string;
 };
 
@@ -15,6 +19,9 @@ export type SkillDetailResult = {
   skill: {
     id: string;
     slug: string;
+    createdAt: string;
+    updatedAt: string;
+    totalDownloadCount: number;
   };
   selectedVersion: {
     id: string;
@@ -22,6 +29,7 @@ export type SkillDetailResult = {
     title: string;
     summary: string;
     markdownContent: string;
+    downloadCount: number;
     bundlePath: string | null;
     bundleName: string | null;
     coverImagePath: string | null;
@@ -33,6 +41,18 @@ export type SkillDetailResult = {
     version: string;
     title: string;
   }>;
+} | null;
+
+export type SkillSubmissionPrefill = {
+  slug: string;
+  version: string;
+  title: string;
+  summary: string;
+  markdownContent: string;
+  existingBundlePath: string | null;
+  existingBundleName: string | null;
+  existingCoverImagePath: string | null;
+  existingCoverImageName: string | null;
 } | null;
 
 export type AdminQueueRecord = {
@@ -48,8 +68,14 @@ function toIsoString(value: Date) {
   return value.toISOString();
 }
 
-export async function listLatestApprovedSkills(search?: string) {
+export async function listLatestApprovedSkills(search?: string, sort: SkillSort = "downloads") {
   const query = search?.trim();
+  const orderBy =
+    sort === "created"
+      ? { createdAt: "desc" as const }
+      : sort === "updated"
+        ? { updatedAt: "desc" as const }
+        : { totalDownloadCount: "desc" as const };
 
   const skills = await prisma.skill.findMany({
     where: {
@@ -92,9 +118,7 @@ export async function listLatestApprovedSkills(search?: string) {
     include: {
       latestApprovedVersion: true
     },
-    orderBy: {
-      updatedAt: "desc"
-    }
+    orderBy
   });
 
   return skills
@@ -106,6 +130,8 @@ export async function listLatestApprovedSkills(search?: string) {
       summary: skill.latestApprovedVersion!.summary,
       version: skill.latestApprovedVersion!.version,
       coverImagePath: skill.latestApprovedVersion!.coverImagePath,
+      totalDownloadCount: skill.totalDownloadCount,
+      createdAt: toIsoString(skill.createdAt),
       updatedAt: toIsoString(skill.latestApprovedVersion!.updatedAt)
     }));
 }
@@ -140,7 +166,10 @@ export async function getSkillDetail(slug: string, requestedVersion?: string): P
   return {
     skill: {
       id: skill.id,
-      slug: skill.slug
+      slug: skill.slug,
+      createdAt: toIsoString(skill.createdAt),
+      updatedAt: toIsoString(skill.updatedAt),
+      totalDownloadCount: skill.totalDownloadCount
     },
     selectedVersion: {
       id: selectedVersion.id,
@@ -148,6 +177,7 @@ export async function getSkillDetail(slug: string, requestedVersion?: string): P
       title: selectedVersion.title,
       summary: selectedVersion.summary,
       markdownContent: selectedVersion.markdownContent,
+      downloadCount: selectedVersion.downloadCount,
       bundlePath: selectedVersion.bundlePath,
       bundleName: selectedVersion.bundleName,
       coverImagePath: selectedVersion.coverImagePath,
@@ -159,6 +189,29 @@ export async function getSkillDetail(slug: string, requestedVersion?: string): P
       version: version.version,
       title: version.title
     }))
+  };
+}
+
+export async function getPublicSkillVersionPrefill(
+  slug: string,
+  requestedVersion?: string,
+): Promise<SkillSubmissionPrefill> {
+  const detail = await getSkillDetail(slug, requestedVersion);
+
+  if (!detail) {
+    return null;
+  }
+
+  return {
+    slug: detail.skill.slug,
+    version: detail.selectedVersion.version,
+    title: detail.selectedVersion.title,
+    summary: detail.selectedVersion.summary,
+    markdownContent: detail.selectedVersion.markdownContent,
+    existingBundlePath: detail.selectedVersion.bundlePath,
+    existingBundleName: detail.selectedVersion.bundleName,
+    existingCoverImagePath: detail.selectedVersion.coverImagePath,
+    existingCoverImageName: null
   };
 }
 

@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { VersionSwitcher } from "@/components/skills/version-switcher";
 
 describe("version switcher", () => {
-  it("encodes version strings in public history links", () => {
+  it("encodes version strings in public history links and uses Chinese copy", () => {
     render(
       <VersionSwitcher
         skillSlug="demo-skill"
@@ -22,5 +22,6 @@ describe("version switcher", () => {
       "href",
       "/skills/demo-skill?version=v1.0.0%26beta%3Dtrue",
     );
+    expect(screen.getByText(/历史版本/i)).toBeInTheDocument();
   });
 });

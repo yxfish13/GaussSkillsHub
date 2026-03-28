@@ -1,5 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { prisma } from "@/lib/db";
+import { isBundleUploadPath } from "@/lib/storage";
 
 const uploadsDirectory = path.join(process.cwd(), "storage", "uploads");
 
@@ -20,7 +22,7 @@ type FileRouteProps = {
   };
 };
 
-export async function GET(_request: Request, { params }: FileRouteProps) {
+export async function GET(request: Request, { params }: FileRouteProps) {
   const relativePath = params.path.join("/");
   const absolutePath = path.join(uploadsDirectory, relativePath);
   const normalizedUploadsDirectory = `${uploadsDirectory}${path.sep}`;
@@ -32,6 +34,58 @@ export async function GET(_request: Request, { params }: FileRouteProps) {
   try {
     const file = await readFile(absolutePath);
     const extension = path.extname(absolutePath).toLowerCase();
+    const versionId = new URL(request.url).searchParams.get("versionId");
+
+    if (isBundleUploadPath(relativePath)) {
+      const version = versionId
+        ? await prisma.skillVersion.findFirst({
+            where: {
+              id: versionId,
+              bundlePath: relativePath
+            },
+            select: {
+              id: true,
+              skillId: true
+            }
+          })
+        : await prisma.skillVersion.findFirst({
+            where: {
+              bundlePath: relativePath
+            },
+            orderBy: {
+              createdAt: "desc"
+            },
+            select: {
+              id: true,
+              skillId: true
+            }
+          });
+
+      if (version) {
+        await prisma.$transaction([
+          prisma.skillVersion.update({
+            where: {
+              id: version.id
+            },
+            data: {
+              downloadCount: {
+                increment: 1
+              }
+            }
+          }),
+          prisma.skill.update({
+            where: {
+              id: version.skillId
+            },
+            data: {
+              totalDownloadCount: {
+                increment: 1
+              }
+            }
+          })
+        ]);
+      }
+    }
 
     return new Response(file, {
       headers: {

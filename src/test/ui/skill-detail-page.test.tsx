@@ -17,7 +17,10 @@ describe("skill detail page", () => {
     mocks.getSkillDetail.mockResolvedValue({
       skill: {
         id: "skill-1",
-        slug: "demo"
+        slug: "demo",
+        createdAt: new Date("2026-03-20").toISOString(),
+        updatedAt: new Date("2026-03-28").toISOString(),
+        totalDownloadCount: 24
       },
       selectedVersion: {
         id: "version-1",
@@ -25,6 +28,7 @@ describe("skill detail page", () => {
         title: "Demo Skill",
         summary: "A compact summary for the demo skill.",
         markdownContent: "# Demo Skill\n\nRendered body.",
+        downloadCount: 7,
         bundlePath: "bundles/demo.zip",
         bundleName: "demo.zip",
         createdAt: new Date().toISOString(),
@@ -55,5 +59,14 @@ describe("skill detail page", () => {
     expect(screen.getAllByRole("heading", { name: /demo skill/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/v1.0.0/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/rendered body/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /更新说明/i })).toHaveAttribute(
+      "href",
+      "/submit?from=demo&base=v1.0.0&mode=docs",
+    );
+    expect(screen.getByRole("link", { name: /发布新版本/i })).toHaveAttribute(
+      "href",
+      "/submit?from=demo&base=v1.0.0&mode=release",
+    );
+    expect(screen.getByText(/7 次下载/i)).toBeInTheDocument();
   });
 });

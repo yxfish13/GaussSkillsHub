@@ -1,6 +1,7 @@
 import React from "react";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { PublicVersionActions } from "@/components/skills/public-version-actions";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { VersionSwitcher } from "@/components/skills/version-switcher";
 import { MarkdownArticle } from "@/lib/markdown";
@@ -30,7 +31,7 @@ export default async function SkillDetailPage({ params, searchParams }: SkillDet
   return (
     <section className="space-y-8">
       <SectionHeading
-        eyebrow="Skill Record"
+        eyebrow="Skill 详情"
         title={selectedVersion.title}
         description={selectedVersion.summary}
       />
@@ -41,16 +42,20 @@ export default async function SkillDetailPage({ params, searchParams }: SkillDet
             <span className="rounded-full border border-line px-3 py-1 font-mono text-[11px] uppercase tracking-[0.3em] text-signal">
               {selectedVersion.version}
             </span>
-            <span>Updated {new Date(selectedVersion.updatedAt).toLocaleDateString()}</span>
+            <span>{selectedVersion.downloadCount} 次下载</span>
+            <span>提交于 {new Date(detail.skill.createdAt).toLocaleDateString()}</span>
+            <span>更新于 {new Date(detail.skill.updatedAt).toLocaleDateString()}</span>
             {selectedVersion.bundlePath ? (
               <a
-                href={buildPublicFileHref(selectedVersion.bundlePath)}
+                href={buildPublicFileHref(selectedVersion.bundlePath, selectedVersion.id)}
                 className="rounded-full border border-line px-3 py-1 font-medium text-ink transition hover:border-signal hover:text-signal"
               >
-                Download {selectedVersion.bundleName || "Bundle"}
+                下载附件 {selectedVersion.bundleName || "Bundle"}
               </a>
             ) : null}
           </div>
+
+          <PublicVersionActions skillSlug={detail.skill.slug} currentVersion={selectedVersion.version} />
 
           {selectedVersion.coverImagePath ? (
             <div className="relative aspect-[16/10] overflow-hidden rounded-[28px] border border-line">

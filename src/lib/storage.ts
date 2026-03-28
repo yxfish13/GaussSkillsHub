@@ -44,8 +44,22 @@ export async function saveUpload(file: File, kind: UploadKind) {
   };
 }
 
-export function buildPublicFileHref(relativePath: string) {
-  return `/api/files/${relativePath.replaceAll("\\", "/")}`;
+export function isBundleUploadPath(relativePath: string) {
+  return relativePath.replaceAll("\\", "/").startsWith("bundles/");
+}
+
+export function buildPublicFileHref(relativePath: string, versionId?: string) {
+  const normalizedPath = relativePath.replaceAll("\\", "/");
+
+  if (!versionId) {
+    return `/api/files/${normalizedPath}`;
+  }
+
+  const params = new URLSearchParams({
+    versionId
+  });
+
+  return `/api/files/${normalizedPath}?${params.toString()}`;
 }
 
 export async function removeStoredFile(relativePath?: string | null) {

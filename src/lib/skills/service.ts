@@ -10,6 +10,20 @@ type ApplyReviewDecisionInput = {
   reviewNote?: string;
 };
 
+type PreparePublicReleaseTransitionInput = {
+  currentApprovedVersionId: string | null;
+  targetVersionId: string;
+};
+
+export function preparePublicReleaseTransition(input: PreparePublicReleaseTransitionInput) {
+  return {
+    targetVersionId: input.targetVersionId,
+    nextStatus: "approved" satisfies SkillVersionStatus,
+    archivePrevious:
+      Boolean(input.currentApprovedVersionId) && input.currentApprovedVersionId !== input.targetVersionId
+  };
+}
+
 export async function applyReviewDecision(input: ApplyReviewDecisionInput) {
   const reviewNote = input.reviewNote?.trim();
 

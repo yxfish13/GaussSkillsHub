@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { SkillVersionStatus } from "@/lib/skills/types";
 import { prisma } from "@/lib/db";
+import { preparePublicReleaseTransition } from "@/lib/skills/service";
+import { shouldCleanupSubmissionArtifacts } from "@/lib/skills/submission-errors";
 import { removeStoredFile, saveUpload } from "@/lib/storage";
 import { submissionSchema } from "@/lib/skills/validation";
 
@@ -31,6 +33,8 @@ export async function submitSkillVersion(formData: FormData) {
     title: getStringValue(formData.get("title")),
     slug: getStringValue(formData.get("slug")),
     version: getStringValue(formData.get("version")),
+    mode: getStringValue(formData.get("mode")) || "new",
+    existingBundlePath: getStringValue(formData.get("existingBundlePath")),
     summary: getStringValue(formData.get("summary")),
     markdownContent: getStringValue(formData.get("markdownContent")),
     submitterName: getStringValue(formData.get("submitterName")),
@@ -72,15 +76,53 @@ export async function submitSkillVersion(formData: FormData) {
       redirect("/submit?status=duplicate");
     }
 
+    const normalizedExistingBundlePath = parsed.data.existingBundlePath?.trim() ?? "";
+    const existingPublicBundle =
+      !bundleFile && parsed.data.mode === "docs" && normalizedExistingBundlePath
+        ? await prisma.skillVersion.findFirst({
+            where: {
+              skillId: skill.id,
+              bundlePath: normalizedExistingBundlePath,
+              status: {
+                in: ["approved", "archived"]
+              }
+            },
+            select: {
+              bundlePath: true,
+              bundleName: true
+            }
+          })
+        : null;
+
+    if (!bundleFile && parsed.data.mode === "docs" && normalizedExistingBundlePath && !existingPublicBundle?.bundlePath) {
+      redirect("/submit?status=invalid");
+    }
+
     const savedCover = coverFile ? await saveUpload(coverFile, "cover") : null;
     const savedBundle = bundleFile ? await saveUpload(bundleFile, "bundle") : null;
 
     savedCoverPath = savedCover?.path ?? null;
     savedBundlePath = savedBundle?.path ?? null;
 
-    const status: SkillVersionStatus = "submitted";
+    const bundlePath = savedBundle?.path ?? existingPublicBundle?.bundlePath ?? null;
+    const bundleName = savedBundle?.originalName ?? existingPublicBundle?.bundleName ?? null;
 
-    await prisma.$transaction(async (transaction) => {
+    if (!bundlePath) {
+      redirect("/submit?status=invalid");
+    }
+
+    const status: SkillVersionStatus = "approved";
+
+    const publishedVersion = await prisma.$transaction(async (transaction) => {
+      const currentSkill = await transaction.skill.findUnique({
+        where: {
+          id: skill.id
+        },
+        select: {
+          latestApprovedVersionId: true
+        }
+      });
+
       const skillVersion = await transaction.skillVersion.create({
         data: {
           skillId: skill.id,
@@ -90,33 +132,81 @@ export async function submitSkillVersion(formData: FormData) {
           markdownContent: parsed.data.markdownContent,
           coverImagePath: savedCover?.path,
           coverImageName: savedCover?.originalName,
-          bundlePath: savedBundle?.path,
-          bundleName: savedBundle?.originalName,
+          bundlePath,
+          bundleName,
           submitterName: getOptionalValue(parsed.data.submitterName ?? ""),
           submitterContact: getOptionalValue(parsed.data.submitterContact ?? ""),
           status
         }
       });
 
+      const releaseTransition = preparePublicReleaseTransition({
+        currentApprovedVersionId: currentSkill?.latestApprovedVersionId ?? null,
+        targetVersionId: skillVersion.id
+      });
+
+      if (releaseTransition.archivePrevious && currentSkill?.latestApprovedVersionId) {
+        const previousLatestVersion = await transaction.skillVersion.findUnique({
+          where: {
+            id: currentSkill.latestApprovedVersionId
+          }
+        });
+
+        if (previousLatestVersion) {
+          await transaction.skillVersion.update({
+            where: {
+              id: previousLatestVersion.id
+            },
+            data: {
+              status: "archived",
+              reviewedAt: new Date()
+            }
+          });
+
+          await transaction.versionReviewLog.create({
+            data: {
+              skillVersionId: previousLatestVersion.id,
+              fromStatus: previousLatestVersion.status,
+              toStatus: "archived",
+              note: "Superseded by a newer public submission.",
+              actorType: "system"
+            }
+          });
+        }
+      }
+
       await transaction.versionReviewLog.create({
         data: {
           skillVersionId: skillVersion.id,
+          fromStatus: null,
           toStatus: status,
-          note: "Anonymous submission received.",
+          note: "Anonymous submission published immediately.",
           actorType: "system"
         }
       });
+
+      await transaction.skill.update({
+        where: {
+          id: skill.id
+        },
+        data: {
+          latestApprovedVersionId: skillVersion.id
+        }
+      });
+
+      return skillVersion;
     });
 
+    revalidatePath("/");
     revalidatePath("/skills");
-    redirect("/submit?status=success");
+    revalidatePath(`/skills/${skill.slug}`);
+    redirect(`/skills/${skill.slug}?version=${encodeURIComponent(publishedVersion.version)}`);
   } catch (error) {
-    await Promise.all([removeStoredFile(savedCoverPath), removeStoredFile(savedBundlePath)]);
-
-    if (error instanceof Error && error.message === "NEXT_REDIRECT") {
+    if (!shouldCleanupSubmissionArtifacts(error)) {
       throw error;
     }
 
+    await Promise.all([removeStoredFile(savedCoverPath), removeStoredFile(savedBundlePath)]);
     redirect("/submit?status=error");
   }
 }

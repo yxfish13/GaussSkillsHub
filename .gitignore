@@ -1,2 +1,4 @@
 .ace-tool/
 .worktrees/
+.next/
+node_modules/

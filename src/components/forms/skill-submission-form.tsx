@@ -53,7 +53,7 @@ export function SkillSubmissionForm({ status }: SkillSubmissionFormProps) {
               name="slug"
               aria-label="Slug"
               required
-              pattern="[a-z0-9-]+"
+              pattern="[a-z0-9]+(-[a-z0-9]+)*"
               className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm"
               placeholder="gauss-workflow"
             />

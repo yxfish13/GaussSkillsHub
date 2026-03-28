@@ -1,15 +1,11 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import type { SkillVersionStatus } from "@/lib/skills/types";
 import { prisma } from "@/lib/db";
 import { removeStoredFile, saveUpload } from "@/lib/storage";
 import { submissionSchema } from "@/lib/skills/validation";
-
-type SubmissionActionState = {
-  ok: boolean;
-  message?: string;
-  errors?: Record<string, string[] | undefined>;
-};
 
 function getStringValue(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value : "";
@@ -27,10 +23,7 @@ function getOptionalValue(value: string) {
   return value.trim() ? value.trim() : undefined;
 }
 
-export async function submitSkillVersion(
-  _previousState: SubmissionActionState,
-  formData: FormData,
-): Promise<SubmissionActionState> {
+export async function submitSkillVersion(formData: FormData) {
   const coverFile = getOptionalFile(formData.get("coverImage"));
   const bundleFile = getOptionalFile(formData.get("bundle"));
 
@@ -49,11 +42,7 @@ export async function submitSkillVersion(
   const parsed = submissionSchema.safeParse(payload);
 
   if (!parsed.success) {
-    return {
-      ok: false,
-      message: "Please correct the highlighted submission fields.",
-      errors: parsed.error.flatten().fieldErrors
-    };
+    redirect("/submit?status=invalid");
   }
 
   let savedCoverPath: string | null = null;
@@ -80,13 +69,7 @@ export async function submitSkillVersion(
     });
 
     if (existingVersion) {
-      return {
-        ok: false,
-        message: "That version already exists for this skill.",
-        errors: {
-          version: ["Choose a new version number before submitting."]
-        }
-      };
+      redirect("/submit?status=duplicate");
     }
 
     const savedCover = coverFile ? await saveUpload(coverFile, "cover") : null;
@@ -125,17 +108,15 @@ export async function submitSkillVersion(
       });
     });
 
-    return {
-      ok: true,
-      message: "Submission received. It is now waiting for admin review."
-    };
+    revalidatePath("/skills");
+    redirect("/submit?status=success");
   } catch (error) {
     await Promise.all([removeStoredFile(savedCoverPath), removeStoredFile(savedBundlePath)]);
 
-    return {
-      ok: false,
-      message:
-        error instanceof Error ? error.message : "Unable to save the submission right now."
-    };
+    if (error instanceof Error && error.message === "NEXT_REDIRECT") {
+      throw error;
+    }
+
+    redirect("/submit?status=error");
   }
 }

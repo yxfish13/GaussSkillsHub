@@ -9,16 +9,25 @@ const bundleMimeTypes = [
   "application/gzip"
 ] as const;
 
-export const submissionSchema = z.object({
-  title: z.string().trim().min(2).max(120),
+const titleSchema = z.string().trim().min(2).max(120);
+const summarySchema = z.string().trim().min(10).max(240);
+const markdownContentSchema = z.string().trim().min(20);
+
+export const reviewDraftSchema = z.object({
+  title: titleSchema,
+  summary: summarySchema,
+  markdownContent: markdownContentSchema
+});
+
+export const reviewIntentSchema = z.enum(["save", "approve", "reject", "resubmit"]);
+
+export const submissionSchema = reviewDraftSchema.extend({
   slug: z.string().trim().regex(/^[a-z0-9-]+$/),
   version: z.string().trim().min(2).max(32),
-  summary: z.string().trim().min(10).max(240),
-  markdownContent: z.string().trim().min(20),
   coverMimeType: z
     .string()
     .trim()
-    .refine((value) => coverMimeTypes.includes(value as (typeof coverMimeTypes)[number]), {
+    .refine((value) => !value || coverMimeTypes.includes(value as (typeof coverMimeTypes)[number]), {
       message: "Cover image must be a supported image format."
     }),
   bundleMimeType: z

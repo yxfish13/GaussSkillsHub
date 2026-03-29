@@ -134,7 +134,7 @@ export async function submitSkillVersion(formData: FormData) {
           coverImageName: savedCover?.originalName,
           bundlePath,
           bundleName,
-          submitterName: getOptionalValue(parsed.data.submitterName ?? ""),
+          submitterName: parsed.data.submitterName.trim(),
           submitterContact: getOptionalValue(parsed.data.submitterContact ?? ""),
           status
         }

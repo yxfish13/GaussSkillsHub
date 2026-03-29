@@ -1,7 +1,8 @@
 import { SkillVersionStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import type { SkillVoteValue } from "@/lib/skills/types";
 
-export type SkillSort = "downloads" | "updated" | "created";
+export type SkillSort = "upvotes" | "downvotes" | "downloads" | "updated" | "created";
 
 export type SkillCardRecord = {
   id: string;
@@ -9,7 +10,10 @@ export type SkillCardRecord = {
   title: string;
   summary: string;
   version: string;
+  submitterName: string;
   coverImagePath: string | null;
+  totalUpvoteCount: number;
+  totalDownvoteCount: number;
   totalDownloadCount: number;
   createdAt: string;
   updatedAt: string;
@@ -21,6 +25,8 @@ export type SkillDetailResult = {
     slug: string;
     createdAt: string;
     updatedAt: string;
+    totalUpvoteCount: number;
+    totalDownvoteCount: number;
     totalDownloadCount: number;
   };
   selectedVersion: {
@@ -33,9 +39,17 @@ export type SkillDetailResult = {
     bundlePath: string | null;
     bundleName: string | null;
     coverImagePath: string | null;
+    submitterName: string;
     createdAt: string;
     updatedAt: string;
   };
+  comments: Array<{
+    id: string;
+    authorName: string;
+    content: string;
+    createdAt: string;
+  }>;
+  currentViewerVote: SkillVoteValue | null;
   approvedVersions: Array<{
     id: string;
     version: string;
@@ -68,10 +82,14 @@ function toIsoString(value: Date) {
   return value.toISOString();
 }
 
-export async function listLatestApprovedSkills(search?: string, sort: SkillSort = "downloads") {
+export async function listLatestApprovedSkills(search?: string, sort: SkillSort = "upvotes") {
   const query = search?.trim();
   const orderBy =
-    sort === "created"
+    sort === "upvotes"
+      ? { totalUpvoteCount: "desc" as const }
+      : sort === "downvotes"
+        ? { totalDownvoteCount: "desc" as const }
+        : sort === "created"
       ? { createdAt: "desc" as const }
       : sort === "updated"
         ? { updatedAt: "desc" as const }
@@ -110,6 +128,16 @@ export async function listLatestApprovedSkills(search?: string, sort: SkillSort 
                     }
                   }
                 }
+              },
+              {
+                latestApprovedVersion: {
+                  is: {
+                    submitterName: {
+                      contains: query,
+                      mode: "insensitive"
+                    }
+                  }
+                }
               }
             ]
           }
@@ -129,14 +157,21 @@ export async function listLatestApprovedSkills(search?: string, sort: SkillSort 
       title: skill.latestApprovedVersion!.title,
       summary: skill.latestApprovedVersion!.summary,
       version: skill.latestApprovedVersion!.version,
+      submitterName: skill.latestApprovedVersion!.submitterName ?? "未署名",
       coverImagePath: skill.latestApprovedVersion!.coverImagePath,
+      totalUpvoteCount: skill.totalUpvoteCount,
+      totalDownvoteCount: skill.totalDownvoteCount,
       totalDownloadCount: skill.totalDownloadCount,
       createdAt: toIsoString(skill.createdAt),
       updatedAt: toIsoString(skill.latestApprovedVersion!.updatedAt)
     }));
 }
 
-export async function getSkillDetail(slug: string, requestedVersion?: string): Promise<SkillDetailResult> {
+export async function getSkillDetail(
+  slug: string,
+  requestedVersion?: string,
+  browserTokenHash?: string,
+): Promise<SkillDetailResult> {
   const skill = await prisma.skill.findUnique({
     where: {
       slug
@@ -152,6 +187,11 @@ export async function getSkillDetail(slug: string, requestedVersion?: string): P
         orderBy: {
           submittedAt: "desc"
         }
+      },
+      comments: {
+        orderBy: {
+          createdAt: "desc"
+        }
       }
     }
   });
@@ -162,6 +202,20 @@ export async function getSkillDetail(slug: string, requestedVersion?: string): P
 
   const selectedVersion =
     skill.versions.find((version) => version.version === requestedVersion) ?? skill.latestApprovedVersion;
+  const currentVote =
+    browserTokenHash && skill.id
+      ? await prisma.skillVote.findUnique({
+          where: {
+            skillId_browserTokenHash: {
+              skillId: skill.id,
+              browserTokenHash
+            }
+          },
+          select: {
+            value: true
+          }
+        })
+      : null;
 
   return {
     skill: {
@@ -169,6 +223,8 @@ export async function getSkillDetail(slug: string, requestedVersion?: string): P
       slug: skill.slug,
       createdAt: toIsoString(skill.createdAt),
       updatedAt: toIsoString(skill.updatedAt),
+      totalUpvoteCount: skill.totalUpvoteCount,
+      totalDownvoteCount: skill.totalDownvoteCount,
       totalDownloadCount: skill.totalDownloadCount
     },
     selectedVersion: {
@@ -181,9 +237,17 @@ export async function getSkillDetail(slug: string, requestedVersion?: string): P
       bundlePath: selectedVersion.bundlePath,
       bundleName: selectedVersion.bundleName,
       coverImagePath: selectedVersion.coverImagePath,
+      submitterName: selectedVersion.submitterName ?? "未署名",
       createdAt: toIsoString(selectedVersion.createdAt),
       updatedAt: toIsoString(selectedVersion.updatedAt)
     },
+    comments: skill.comments.map((comment) => ({
+      id: comment.id,
+      authorName: comment.authorName,
+      content: comment.content,
+      createdAt: toIsoString(comment.createdAt)
+    })),
+    currentViewerVote: currentVote?.value ?? null,
     approvedVersions: skill.versions.map((version) => ({
       id: version.id,
       version: version.version,

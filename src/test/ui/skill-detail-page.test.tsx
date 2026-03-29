@@ -10,6 +10,10 @@ vi.mock("@/lib/skills/queries", () => ({
   getSkillDetail: mocks.getSkillDetail
 }));
 
+vi.mock("@/app/actions/community", () => ({
+  toggleSkillVote: "/skills/vote"
+}));
+
 import SkillDetailPage from "@/app/skills/[slug]/page";
 
 describe("skill detail page", () => {
@@ -20,6 +24,8 @@ describe("skill detail page", () => {
         slug: "demo",
         createdAt: new Date("2026-03-20").toISOString(),
         updatedAt: new Date("2026-03-28").toISOString(),
+        totalUpvoteCount: 12,
+        totalDownvoteCount: 3,
         totalDownloadCount: 24
       },
       selectedVersion: {
@@ -31,9 +37,13 @@ describe("skill detail page", () => {
         downloadCount: 7,
         bundlePath: "bundles/demo.zip",
         bundleName: "demo.zip",
+        coverImagePath: null,
+        submitterName: "Ada",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       },
+      comments: [],
+      currentViewerVote: "up",
       approvedVersions: [
         {
           id: "version-1",
@@ -68,5 +78,10 @@ describe("skill detail page", () => {
       "/submit?from=demo&base=v1.0.0&mode=release",
     );
     expect(screen.getByText(/7 次下载/i)).toBeInTheDocument();
+    expect(screen.getByText(/发布者 Ada/i)).toBeInTheDocument();
+    expect(screen.getByText(/12 赞/i)).toBeInTheDocument();
+    expect(screen.getByText(/3 踩/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /点赞/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /点踩/i })).toBeInTheDocument();
   });
 });

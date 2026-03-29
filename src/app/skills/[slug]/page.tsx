@@ -2,6 +2,7 @@ import React from "react";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { PublicVersionActions } from "@/components/skills/public-version-actions";
+import { SkillVotePanel } from "@/components/skills/skill-vote-panel";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { VersionSwitcher } from "@/components/skills/version-switcher";
 import { MarkdownArticle } from "@/lib/markdown";
@@ -43,6 +44,9 @@ export default async function SkillDetailPage({ params, searchParams }: SkillDet
               {selectedVersion.version}
             </span>
             <span>{selectedVersion.downloadCount} 次下载</span>
+            <span>发布者 {selectedVersion.submitterName}</span>
+            <span>{detail.skill.totalUpvoteCount} 赞</span>
+            <span>{detail.skill.totalDownvoteCount} 踩</span>
             <span>提交于 {new Date(detail.skill.createdAt).toLocaleDateString()}</span>
             <span>更新于 {new Date(detail.skill.updatedAt).toLocaleDateString()}</span>
             {selectedVersion.bundlePath ? (
@@ -55,7 +59,14 @@ export default async function SkillDetailPage({ params, searchParams }: SkillDet
             ) : null}
           </div>
 
-          <PublicVersionActions skillSlug={detail.skill.slug} currentVersion={selectedVersion.version} />
+          <div className="flex flex-wrap items-center gap-3">
+            <PublicVersionActions skillSlug={detail.skill.slug} currentVersion={selectedVersion.version} />
+            <SkillVotePanel
+              skillId={detail.skill.id}
+              skillSlug={detail.skill.slug}
+              currentVote={detail.currentViewerVote}
+            />
+          </div>
 
           {selectedVersion.coverImagePath ? (
             <div className="relative aspect-[16/10] overflow-hidden rounded-[28px] border border-line">

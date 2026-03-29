@@ -32,7 +32,7 @@ async function publishSkill(page: Page, skill: SkillSubmission) {
 }
 
 test("a submission becomes public immediately and bundle download is available", async ({ page }) => {
-  const runToken = `${Date.now()}`;
+  const runToken = `release-${Date.now()}`;
   const initialVersion = "v1.0.0";
   const docsVersion = "v1.0.1";
   const baselineSlug = `superpowers-e2e-${runToken}-baseline`;

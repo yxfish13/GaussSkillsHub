@@ -33,7 +33,7 @@ async function publishSkill(page: Page, skill: SkillSubmission) {
 }
 
 test("community catalogue flow supports publish, vote ranking, and comments", async ({ page }) => {
-  const runToken = `${Date.now()}`;
+  const runToken = `community-${Date.now()}`;
   const version = "v1.0.0";
   const submitter = "Flow Publisher";
   const baselineSlug = `community-flow-${runToken}-baseline`;

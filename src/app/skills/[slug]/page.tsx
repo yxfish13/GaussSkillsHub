@@ -1,8 +1,10 @@
 import React from "react";
 import Image from "next/image";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { PublicVersionActions } from "@/components/skills/public-version-actions";
 import { SkillVotePanel } from "@/components/skills/skill-vote-panel";
+import { SKILL_BROWSER_TOKEN_COOKIE_NAME, hashSkillBrowserToken } from "@/lib/skills/browser-token";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { VersionSwitcher } from "@/components/skills/version-switcher";
 import { MarkdownArticle } from "@/lib/markdown";
@@ -21,7 +23,9 @@ type SkillDetailPageProps = {
 };
 
 export default async function SkillDetailPage({ params, searchParams }: SkillDetailPageProps) {
-  const detail = await getSkillDetail(params.slug, searchParams?.version);
+  const browserToken = cookies().get(SKILL_BROWSER_TOKEN_COOKIE_NAME)?.value;
+  const browserTokenHash = browserToken ? hashSkillBrowserToken(browserToken) : undefined;
+  const detail = await getSkillDetail(params.slug, searchParams?.version, browserTokenHash);
 
   if (!detail) {
     notFound();

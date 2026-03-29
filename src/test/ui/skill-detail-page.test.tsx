@@ -3,11 +3,18 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  getSkillDetail: vi.fn()
+  getSkillDetail: vi.fn(),
+  cookies: vi.fn(() => ({
+    get: vi.fn((name: string) => (name === "gauss-skills-browser-token" ? { value: "demo-browser-token" } : undefined))
+  }))
 }));
 
 vi.mock("@/lib/skills/queries", () => ({
   getSkillDetail: mocks.getSkillDetail
+}));
+
+vi.mock("next/headers", () => ({
+  cookies: mocks.cookies
 }));
 
 vi.mock("@/app/actions/community", () => ({
@@ -83,5 +90,10 @@ describe("skill detail page", () => {
     expect(screen.getByText(/3 踩/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /点赞/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /点踩/i })).toBeInTheDocument();
+    expect(mocks.getSkillDetail).toHaveBeenCalledWith(
+      "demo",
+      "v1.0.0",
+      expect.stringMatching(/^[a-f0-9]{64}$/),
+    );
   });
 });

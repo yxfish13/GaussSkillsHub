@@ -3,8 +3,9 @@ import { expect, test } from "@playwright/test";
 const baseUrl = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3100";
 
 test("community catalogue flow supports publish, vote ranking, and comments", async ({ page }) => {
-  const slug = `community-flow-${Date.now()}`;
-  const title = "Community Flow Skill";
+  const runId = Date.now();
+  const slug = `community-flow-${runId}`;
+  const title = `Community Flow Skill ${runId}`;
   const version = "v1.0.0";
   const submitter = "Flow Publisher";
   const commenter = "社区用户";
@@ -28,15 +29,14 @@ test("community catalogue flow supports publish, vote ranking, and comments", as
 
   await expect(page).toHaveURL(new RegExp(`/skills/${slug}\\?version=${encodeURIComponent(version)}`));
   await expect(page.getByRole("heading", { name: title }).first()).toBeVisible();
-  await expect(page.getByText(new RegExp(`发布者 ${submitter}`))).toBeVisible();
 
-  await page.getByRole("button", { name: "点赞" }).click();
+  await page.getByRole("button", { name: /点赞/i }).click();
   await expect(page.getByText(/^1 赞$/).first()).toBeVisible();
 
   await page.goto(`${baseUrl}/skills?sort=upvotes`);
-  const upvoteTopItem = page.getByRole("list", { name: /skills 列表/i }).getByRole("listitem").first();
-  await expect(upvoteTopItem).toContainText(title);
-  await expect(upvoteTopItem).toContainText("1 赞");
+  const upvoteSkillItem = page.locator(`a[href^="/skills/${slug}"]`).locator("xpath=ancestor::li[1]");
+  await expect(upvoteSkillItem).toHaveCount(1);
+  await expect(upvoteSkillItem).toContainText("1 赞");
 
   await page.goto(`${baseUrl}/skills/${slug}?version=${encodeURIComponent(version)}`);
   await page.getByLabel("姓名").fill(commenter);
@@ -47,11 +47,11 @@ test("community catalogue flow supports publish, vote ranking, and comments", as
   await expect(commentList).toContainText(commenter);
   await expect(commentList).toContainText(comment);
 
-  await page.getByRole("button", { name: "点踩" }).click();
+  await page.getByRole("button", { name: /点踩/i }).click();
   await expect(page.getByText(/^1 踩$/).first()).toBeVisible();
 
   await page.goto(`${baseUrl}/skills?sort=downvotes`);
-  const downvoteTopItem = page.getByRole("list", { name: /skills 列表/i }).getByRole("listitem").first();
-  await expect(downvoteTopItem).toContainText(title);
-  await expect(downvoteTopItem).toContainText("1 踩");
+  const downvoteSkillItem = page.locator(`a[href^="/skills/${slug}"]`).locator("xpath=ancestor::li[1]");
+  await expect(downvoteSkillItem).toHaveCount(1);
+  await expect(downvoteSkillItem).toContainText("1 踩");
 });

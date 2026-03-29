@@ -86,14 +86,39 @@ export async function listLatestApprovedSkills(search?: string, sort: SkillSort 
   const query = search?.trim();
   const orderBy =
     sort === "upvotes"
-      ? { totalUpvoteCount: "desc" as const }
+      ? [
+          { totalUpvoteCount: "desc" as const },
+          { totalDownloadCount: "desc" as const },
+          { updatedAt: "desc" as const },
+          { createdAt: "desc" as const },
+          { id: "asc" as const }
+        ]
       : sort === "downvotes"
-        ? { totalDownvoteCount: "desc" as const }
+        ? [
+            { totalDownvoteCount: "desc" as const },
+            { totalDownloadCount: "desc" as const },
+            { updatedAt: "desc" as const },
+            { createdAt: "desc" as const },
+            { id: "asc" as const }
+          ]
         : sort === "created"
-      ? { createdAt: "desc" as const }
+      ? [
+          { createdAt: "desc" as const },
+          { updatedAt: "desc" as const },
+          { id: "asc" as const }
+        ]
       : sort === "updated"
-        ? { updatedAt: "desc" as const }
-        : { totalDownloadCount: "desc" as const };
+        ? [
+            { updatedAt: "desc" as const },
+            { createdAt: "desc" as const },
+            { id: "asc" as const }
+          ]
+        : [
+            { totalDownloadCount: "desc" as const },
+            { updatedAt: "desc" as const },
+            { createdAt: "desc" as const },
+            { id: "asc" as const }
+          ];
 
   const skills = await prisma.skill.findMany({
     where: {

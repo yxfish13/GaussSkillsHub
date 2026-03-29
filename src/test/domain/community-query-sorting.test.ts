@@ -32,9 +32,13 @@ describe("community query sorting", () => {
 
     expect(mocks.prisma.skill.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        orderBy: {
-          totalUpvoteCount: "desc"
-        }
+        orderBy: [
+          { totalUpvoteCount: "desc" },
+          { totalDownloadCount: "desc" },
+          { updatedAt: "desc" },
+          { createdAt: "desc" },
+          { id: "asc" }
+        ]
       }),
     );
   });
@@ -46,9 +50,30 @@ describe("community query sorting", () => {
 
     expect(mocks.prisma.skill.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        orderBy: {
-          totalDownvoteCount: "desc"
-        }
+        orderBy: [
+          { totalDownvoteCount: "desc" },
+          { totalDownloadCount: "desc" },
+          { updatedAt: "desc" },
+          { createdAt: "desc" },
+          { id: "asc" }
+        ]
+      }),
+    );
+  });
+
+  it("supports deterministic download sorting", async () => {
+    mocks.prisma.skill.findMany.mockResolvedValueOnce([]);
+
+    await listLatestApprovedSkills(undefined, "downloads");
+
+    expect(mocks.prisma.skill.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: [
+          { totalDownloadCount: "desc" },
+          { updatedAt: "desc" },
+          { createdAt: "desc" },
+          { id: "asc" }
+        ]
       }),
     );
   });

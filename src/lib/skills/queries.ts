@@ -84,12 +84,17 @@ function toIsoString(value: Date) {
 
 export async function listLatestApprovedSkills(search?: string, sort: SkillSort = "upvotes") {
   const query = search?.trim();
+  const latestApprovedUpdatedOrder = {
+    latestApprovedVersion: {
+      updatedAt: "desc" as const
+    }
+  };
   const orderBy =
     sort === "upvotes"
       ? [
           { totalUpvoteCount: "desc" as const },
           { totalDownloadCount: "desc" as const },
-          { updatedAt: "desc" as const },
+          latestApprovedUpdatedOrder,
           { createdAt: "desc" as const },
           { id: "asc" as const }
         ]
@@ -97,7 +102,7 @@ export async function listLatestApprovedSkills(search?: string, sort: SkillSort 
         ? [
             { totalDownvoteCount: "desc" as const },
             { totalDownloadCount: "desc" as const },
-            { updatedAt: "desc" as const },
+            latestApprovedUpdatedOrder,
             { createdAt: "desc" as const },
             { id: "asc" as const }
           ]
@@ -109,13 +114,13 @@ export async function listLatestApprovedSkills(search?: string, sort: SkillSort 
         ]
       : sort === "updated"
         ? [
-            { updatedAt: "desc" as const },
+            latestApprovedUpdatedOrder,
             { createdAt: "desc" as const },
             { id: "asc" as const }
           ]
         : [
             { totalDownloadCount: "desc" as const },
-            { updatedAt: "desc" as const },
+            latestApprovedUpdatedOrder,
             { createdAt: "desc" as const },
             { id: "asc" as const }
           ];
@@ -247,7 +252,7 @@ export async function getSkillDetail(
       id: skill.id,
       slug: skill.slug,
       createdAt: toIsoString(skill.createdAt),
-      updatedAt: toIsoString(skill.updatedAt),
+      updatedAt: toIsoString(skill.latestApprovedVersion.updatedAt),
       totalUpvoteCount: skill.totalUpvoteCount,
       totalDownvoteCount: skill.totalDownvoteCount,
       totalDownloadCount: skill.totalDownloadCount

@@ -108,12 +108,16 @@ export function SkillSubmissionForm({ mode = "new", prefill, status }: SkillSubm
           </label>
 
           <label className="space-y-2 text-sm font-medium text-ink">
-            <span>提交者</span>
+            <span className="flex items-center justify-between gap-3">
+              <span>提交者</span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-signal">必填</span>
+            </span>
             <input
               name="submitterName"
               aria-label="提交者"
+              required
               className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm"
-              placeholder="可选"
+              placeholder="例如 Ada"
             />
           </label>
         </div>

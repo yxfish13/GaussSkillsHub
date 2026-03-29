@@ -45,6 +45,8 @@ describe("submit page", () => {
     expect(screen.getByDisplayValue("superpowers")).toBeInTheDocument();
     expect(screen.getByText(/你正在基于 v1.0.0 更新说明/i)).toBeInTheDocument();
     expect(screen.getByDisplayValue("Superpowers")).toBeInTheDocument();
+    expect(screen.getByLabelText(/提交者/i)).toBeRequired();
+    expect(screen.getByLabelText(/提交者/i)).toHaveAttribute("placeholder", "例如 Ada");
     expect(screen.getByLabelText(/技能压缩包/i)).not.toBeRequired();
     expect(screen.getByLabelText(/唯一标识/i)).toHaveAttribute("pattern", "[a-z0-9]+(-[a-z0-9]+)*");
     expect(screen.getByDisplayValue("bundles/superpowers.zip")).toHaveAttribute("type", "hidden");

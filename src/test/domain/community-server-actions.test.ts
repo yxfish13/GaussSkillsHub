@@ -20,9 +20,9 @@ const mocks = vi.hoisted(() => ({
     },
     skillVote: {
       findUnique: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn()
+      upsert: vi.fn(),
+      deleteMany: vi.fn(),
+      count: vi.fn()
     },
     $transaction: vi.fn()
   }
@@ -131,15 +131,37 @@ describe("community server actions", () => {
       direction: "up"
     });
     mocks.prisma.skillVote.findUnique.mockResolvedValueOnce(null);
+    mocks.prisma.skillVote.count.mockResolvedValueOnce(3).mockResolvedValueOnce(1);
 
     await expect(toggleSkillVote(formData)).rejects.toThrow("NEXT_REDIRECT");
 
     expect(mocks.getOrCreateSkillBrowserTokenHash).toHaveBeenCalled();
-    expect(mocks.prisma.skillVote.create).toHaveBeenCalledWith({
-      data: {
+    expect(mocks.prisma.skillVote.upsert).toHaveBeenCalledWith({
+      where: {
+        skillId_browserTokenHash: {
+          skillId: "skill-1",
+          browserTokenHash: "hashed-browser-token"
+        }
+      },
+      create: {
         skillId: "skill-1",
         browserTokenHash: "hashed-browser-token",
         value: "up"
+      },
+      update: {
+        value: "up"
+      }
+    });
+    expect(mocks.prisma.skillVote.count).toHaveBeenNthCalledWith(1, {
+      where: {
+        skillId: "skill-1",
+        value: "up"
+      }
+    });
+    expect(mocks.prisma.skillVote.count).toHaveBeenNthCalledWith(2, {
+      where: {
+        skillId: "skill-1",
+        value: "down"
       }
     });
     expect(mocks.prisma.skill.update).toHaveBeenCalledWith({
@@ -147,12 +169,8 @@ describe("community server actions", () => {
         id: "skill-1"
       },
       data: {
-        totalUpvoteCount: {
-          increment: 1
-        },
-        totalDownvoteCount: {
-          increment: 0
-        }
+        totalUpvoteCount: 3,
+        totalDownvoteCount: 1
       }
     });
   });
@@ -165,12 +183,14 @@ describe("community server actions", () => {
       id: "vote-1",
       value: "down"
     });
+    mocks.prisma.skillVote.count.mockResolvedValueOnce(2).mockResolvedValueOnce(0);
 
     await expect(toggleSkillVote(formData)).rejects.toThrow("NEXT_REDIRECT");
 
-    expect(mocks.prisma.skillVote.delete).toHaveBeenCalledWith({
+    expect(mocks.prisma.skillVote.deleteMany).toHaveBeenCalledWith({
       where: {
-        id: "vote-1"
+        skillId: "skill-1",
+        browserTokenHash: "hashed-browser-token"
       }
     });
     expect(mocks.prisma.skill.update).toHaveBeenCalledWith({
@@ -178,12 +198,8 @@ describe("community server actions", () => {
         id: "skill-1"
       },
       data: {
-        totalUpvoteCount: {
-          increment: 0
-        },
-        totalDownvoteCount: {
-          increment: -1
-        }
+        totalUpvoteCount: 2,
+        totalDownvoteCount: 0
       }
     });
   });
@@ -196,14 +212,23 @@ describe("community server actions", () => {
       id: "vote-1",
       value: "up"
     });
+    mocks.prisma.skillVote.count.mockResolvedValueOnce(4).mockResolvedValueOnce(6);
 
     await expect(toggleSkillVote(formData)).rejects.toThrow("NEXT_REDIRECT");
 
-    expect(mocks.prisma.skillVote.update).toHaveBeenCalledWith({
+    expect(mocks.prisma.skillVote.upsert).toHaveBeenCalledWith({
       where: {
-        id: "vote-1"
+        skillId_browserTokenHash: {
+          skillId: "skill-1",
+          browserTokenHash: "hashed-browser-token"
+        }
       },
-      data: {
+      create: {
+        skillId: "skill-1",
+        browserTokenHash: "hashed-browser-token",
+        value: "down"
+      },
+      update: {
         value: "down"
       }
     });
@@ -212,12 +237,8 @@ describe("community server actions", () => {
         id: "skill-1"
       },
       data: {
-        totalUpvoteCount: {
-          increment: -1
-        },
-        totalDownvoteCount: {
-          increment: 1
-        }
+        totalUpvoteCount: 4,
+        totalDownvoteCount: 6
       }
     });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/skills");

@@ -93,42 +93,54 @@ export async function toggleSkillVote(formData: FormData) {
 
     const transition = resolveSkillVoteTransition(existingVote?.value ?? null, parsedDirection.data);
 
-    if (!transition.nextValue && existingVote) {
-      await transaction.skillVote.delete({
+    if (!transition.nextValue) {
+      await transaction.skillVote.deleteMany({
         where: {
-          id: existingVote.id
+          skillId: canonicalSkill.id,
+          browserTokenHash
         }
       });
-    } else if (transition.nextValue && existingVote) {
-      await transaction.skillVote.update({
+    } else {
+      await transaction.skillVote.upsert({
         where: {
-          id: existingVote.id
+          skillId_browserTokenHash: {
+            skillId: canonicalSkill.id,
+            browserTokenHash
+          }
         },
-        data: {
-          value: transition.nextValue
-        }
-      });
-    } else if (transition.nextValue) {
-      await transaction.skillVote.create({
-        data: {
+        create: {
           skillId: canonicalSkill.id,
           browserTokenHash,
+          value: transition.nextValue
+        },
+        update: {
           value: transition.nextValue
         }
       });
     }
+
+    const [totalUpvoteCount, totalDownvoteCount] = await Promise.all([
+      transaction.skillVote.count({
+        where: {
+          skillId: canonicalSkill.id,
+          value: "up"
+        }
+      }),
+      transaction.skillVote.count({
+        where: {
+          skillId: canonicalSkill.id,
+          value: "down"
+        }
+      })
+    ]);
 
     await transaction.skill.update({
       where: {
         id: canonicalSkill.id
       },
       data: {
-        totalUpvoteCount: {
-          increment: transition.upvoteDelta
-        },
-        totalDownvoteCount: {
-          increment: transition.downvoteDelta
-        }
+        totalUpvoteCount,
+        totalDownvoteCount
       }
     });
   });

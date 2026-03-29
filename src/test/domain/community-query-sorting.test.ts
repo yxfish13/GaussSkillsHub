@@ -35,7 +35,7 @@ describe("community query sorting", () => {
         orderBy: [
           { totalUpvoteCount: "desc" },
           { totalDownloadCount: "desc" },
-          { updatedAt: "desc" },
+          { latestApprovedVersion: { updatedAt: "desc" } },
           { createdAt: "desc" },
           { id: "asc" }
         ]
@@ -53,7 +53,7 @@ describe("community query sorting", () => {
         orderBy: [
           { totalDownvoteCount: "desc" },
           { totalDownloadCount: "desc" },
-          { updatedAt: "desc" },
+          { latestApprovedVersion: { updatedAt: "desc" } },
           { createdAt: "desc" },
           { id: "asc" }
         ]
@@ -70,10 +70,22 @@ describe("community query sorting", () => {
       expect.objectContaining({
         orderBy: [
           { totalDownloadCount: "desc" },
-          { updatedAt: "desc" },
+          { latestApprovedVersion: { updatedAt: "desc" } },
           { createdAt: "desc" },
           { id: "asc" }
         ]
+      }),
+    );
+  });
+
+  it("uses the latest approved release timestamp for updated sorting", async () => {
+    mocks.prisma.skill.findMany.mockResolvedValueOnce([]);
+
+    await listLatestApprovedSkills(undefined, "updated");
+
+    expect(mocks.prisma.skill.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: [{ latestApprovedVersion: { updatedAt: "desc" } }, { createdAt: "desc" }, { id: "asc" }]
       }),
     );
   });
@@ -131,12 +143,13 @@ describe("community query sorting", () => {
   it("returns vote totals, submitter fallback, comments, and current viewer vote", async () => {
     const now = new Date("2026-03-29T10:00:00.000Z");
     const earlier = new Date("2026-03-28T10:00:00.000Z");
+    const voteTouchedAt = new Date("2026-03-30T10:00:00.000Z");
 
     mocks.prisma.skill.findUnique.mockResolvedValueOnce({
       id: "skill-1",
       slug: "superpowers",
       createdAt: earlier,
-      updatedAt: now,
+      updatedAt: voteTouchedAt,
       totalDownloadCount: 10,
       totalUpvoteCount: 6,
       totalDownvoteCount: 2,
@@ -230,6 +243,7 @@ describe("community query sorting", () => {
     });
     expect(detail?.skill.totalUpvoteCount).toBe(6);
     expect(detail?.skill.totalDownvoteCount).toBe(2);
+    expect(detail?.skill.updatedAt).toBe(now.toISOString());
     expect(detail?.selectedVersion.submitterName).toBe("未署名");
     expect(detail?.comments.map((comment) => comment.id)).toEqual(["comment-2", "comment-1"]);
     expect(detail?.currentViewerVote).toBe("down");

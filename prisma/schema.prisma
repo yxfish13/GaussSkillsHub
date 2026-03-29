@@ -20,6 +20,11 @@ enum ReviewActorType {
   admin
 }
 
+enum SkillVoteValue {
+  up
+  down
+}
+
 model AdminUser {
   id           String             @id @default(cuid())
   username     String             @unique
@@ -33,11 +38,15 @@ model Skill {
   id                      String         @id @default(cuid())
   slug                    String         @unique
   totalDownloadCount      Int            @default(0)
+  totalUpvoteCount        Int            @default(0)
+  totalDownvoteCount      Int            @default(0)
   createdAt               DateTime       @default(now())
   updatedAt               DateTime       @updatedAt
   latestApprovedVersionId String?        @unique
   latestApprovedVersion   SkillVersion?  @relation("LatestApprovedVersion", fields: [latestApprovedVersionId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   versions                SkillVersion[]
+  comments                SkillComment[]
+  votes                   SkillVote[]
 }
 
 model SkillVersion {
@@ -81,4 +90,29 @@ model VersionReviewLog {
   skillVersion   SkillVersion       @relation(fields: [skillVersionId], references: [id], onDelete: Cascade)
 
   @@index([skillVersionId, createdAt])
+}
+
+model SkillComment {
+  id         String   @id @default(cuid())
+  skillId    String
+  authorName String
+  content    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  skill      Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@index([skillId, createdAt])
+}
+
+model SkillVote {
+  id               String         @id @default(cuid())
+  skillId          String
+  browserTokenHash String
+  value            SkillVoteValue
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  skill            Skill          @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([skillId, browserTokenHash])
+  @@index([skillId, value])
 }

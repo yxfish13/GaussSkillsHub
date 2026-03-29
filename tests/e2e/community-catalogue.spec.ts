@@ -1,6 +1,11 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const baseUrl = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3100";
+const getCatalogueSkillRow = (page: Page, title: string) =>
+  page
+    .getByRole("list", { name: /skills 列表/i })
+    .getByRole("listitem")
+    .filter({ has: page.getByRole("link", { name: `查看 ${title} 详情` }) });
 
 test("community catalogue flow supports publish, vote ranking, and comments", async ({ page }) => {
   const runId = Date.now();
@@ -34,7 +39,7 @@ test("community catalogue flow supports publish, vote ranking, and comments", as
   await expect(page.getByText(/^1 赞$/).first()).toBeVisible();
 
   await page.goto(`${baseUrl}/skills?sort=upvotes`);
-  const upvoteSkillItem = page.locator(`a[href^="/skills/${slug}"]`).locator("xpath=ancestor::li[1]");
+  const upvoteSkillItem = getCatalogueSkillRow(page, title);
   await expect(upvoteSkillItem).toHaveCount(1);
   await expect(upvoteSkillItem).toContainText("1 赞");
 
@@ -51,7 +56,7 @@ test("community catalogue flow supports publish, vote ranking, and comments", as
   await expect(page.getByText(/^1 踩$/).first()).toBeVisible();
 
   await page.goto(`${baseUrl}/skills?sort=downvotes`);
-  const downvoteSkillItem = page.locator(`a[href^="/skills/${slug}"]`).locator("xpath=ancestor::li[1]");
+  const downvoteSkillItem = getCatalogueSkillRow(page, title);
   await expect(downvoteSkillItem).toHaveCount(1);
   await expect(downvoteSkillItem).toContainText("1 踩");
 });

@@ -1,6 +1,11 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 const baseUrl = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3100";
+const getCatalogueSkillRow = (page: Page, title: string) =>
+  page
+    .getByRole("list", { name: /skills 列表/i })
+    .getByRole("listitem")
+    .filter({ has: page.getByRole("link", { name: `查看 ${title} 详情` }) });
 
 test("a submission becomes public immediately and bundle download is available", async ({ page }) => {
   const runId = Date.now();
@@ -52,7 +57,7 @@ test("a submission becomes public immediately and bundle download is available",
   await expect(page.getByText(/1 次下载/i).first()).toBeVisible();
 
   await page.goto(`${baseUrl}/skills?sort=downloads`);
-  const downloadsSkillItem = page.locator(`a[href^="/skills/${slug}"]`).locator("xpath=ancestor::li[1]");
+  const downloadsSkillItem = getCatalogueSkillRow(page, title);
   await expect(downloadsSkillItem).toHaveCount(1);
   await expect(downloadsSkillItem).toContainText("1 次下载");
 });

@@ -8,6 +8,8 @@ type CatalogueSortBarProps = {
 };
 
 const sortOptions: Array<{ value: SkillSort; label: string }> = [
+  { value: "upvotes", label: "按点赞排序" },
+  { value: "downvotes", label: "按点踩排序" },
   { value: "downloads", label: "按下载量排序" },
   { value: "updated", label: "按更新时间排序" },
   { value: "created", label: "按提交时间排序" }

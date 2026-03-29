@@ -3,6 +3,8 @@ import Image from "next/image";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { PublicVersionActions } from "@/components/skills/public-version-actions";
+import { SkillCommentForm } from "@/components/skills/skill-comment-form";
+import { SkillCommentList } from "@/components/skills/skill-comment-list";
 import { SkillVotePanel } from "@/components/skills/skill-vote-panel";
 import { SKILL_BROWSER_TOKEN_COOKIE_NAME, hashSkillBrowserToken } from "@/lib/skills/browser-token";
 import { SectionHeading } from "@/components/ui/section-heading";
@@ -85,6 +87,14 @@ export default async function SkillDetailPage({ params, searchParams }: SkillDet
           ) : null}
 
           <MarkdownArticle content={selectedVersion.markdownContent} />
+
+          <section className="space-y-4 border-t border-line/70 pt-5">
+            <h3 className="text-xl font-semibold text-ink">社区讨论</h3>
+            <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+              <SkillCommentForm skillId={detail.skill.id} skillSlug={detail.skill.slug} />
+              <SkillCommentList comments={detail.comments} />
+            </div>
+          </section>
         </article>
 
         <VersionSwitcher

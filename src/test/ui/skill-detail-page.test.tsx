@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { beforeEach, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -18,7 +18,8 @@ vi.mock("next/headers", () => ({
 }));
 
 vi.mock("@/app/actions/community", () => ({
-  toggleSkillVote: "/skills/vote"
+  toggleSkillVote: "/skills/vote",
+  submitSkillComment: "/skills/comment"
 }));
 
 import SkillDetailPage from "@/app/skills/[slug]/page";
@@ -49,7 +50,20 @@ describe("skill detail page", () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       },
-      comments: [],
+      comments: [
+        {
+          id: "comment-2",
+          authorName: "Grace",
+          content: "第二条评论",
+          createdAt: new Date("2026-03-29").toISOString()
+        },
+        {
+          id: "comment-1",
+          authorName: "Linus",
+          content: "第一条评论",
+          createdAt: new Date("2026-03-28").toISOString()
+        }
+      ],
       currentViewerVote: "up",
       approvedVersions: [
         {
@@ -90,6 +104,14 @@ describe("skill detail page", () => {
     expect(screen.getByText(/3 踩/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /点赞/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /点踩/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /社区讨论/i })).toBeInTheDocument();
+    expect(screen.getByLabelText("姓名")).toBeInTheDocument();
+    expect(screen.getByLabelText("评论内容")).toBeInTheDocument();
+    const commentList = screen.getByRole("list", { name: "评论列表" });
+    const comments = within(commentList).getAllByRole("listitem");
+    expect(comments).toHaveLength(2);
+    expect(comments[0]).toHaveTextContent("第二条评论");
+    expect(comments[1]).toHaveTextContent("第一条评论");
     expect(mocks.getSkillDetail).toHaveBeenCalledWith(
       "demo",
       "v1.0.0",

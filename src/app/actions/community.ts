@@ -1,5 +1,6 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -7,8 +8,14 @@ import { resolveSkillVoteTransition } from "@/lib/skills/community";
 import { getOrCreateSkillBrowserTokenHash } from "@/lib/skills/browser-token";
 import { commentSchema, voteDirectionSchema } from "@/lib/skills/validation";
 
+const MAX_VOTE_TRANSACTION_ATTEMPTS = 3;
+
 function getStringValue(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value : "";
+}
+
+function isRetryableVoteConflict(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2034";
 }
 
 async function resolveCanonicalSkill(inputSkillId: string, inputSlug: string) {
@@ -81,69 +88,83 @@ export async function toggleSkillVote(formData: FormData) {
 
   const browserTokenHash = await getOrCreateSkillBrowserTokenHash();
 
-  await prisma.$transaction(async (transaction) => {
-    const existingVote = await transaction.skillVote.findUnique({
-      where: {
-        skillId_browserTokenHash: {
-          skillId: canonicalSkill.id,
-          browserTokenHash
-        }
-      }
-    });
+  for (let attempt = 1; attempt <= MAX_VOTE_TRANSACTION_ATTEMPTS; attempt += 1) {
+    try {
+      await prisma.$transaction(
+        async (transaction) => {
+          const existingVote = await transaction.skillVote.findUnique({
+            where: {
+              skillId_browserTokenHash: {
+                skillId: canonicalSkill.id,
+                browserTokenHash
+              }
+            }
+          });
 
-    const transition = resolveSkillVoteTransition(existingVote?.value ?? null, parsedDirection.data);
+          const transition = resolveSkillVoteTransition(existingVote?.value ?? null, parsedDirection.data);
 
-    if (!transition.nextValue) {
-      await transaction.skillVote.deleteMany({
-        where: {
-          skillId: canonicalSkill.id,
-          browserTokenHash
-        }
-      });
-    } else {
-      await transaction.skillVote.upsert({
-        where: {
-          skillId_browserTokenHash: {
-            skillId: canonicalSkill.id,
-            browserTokenHash
+          if (!transition.nextValue) {
+            await transaction.skillVote.deleteMany({
+              where: {
+                skillId: canonicalSkill.id,
+                browserTokenHash
+              }
+            });
+          } else {
+            await transaction.skillVote.upsert({
+              where: {
+                skillId_browserTokenHash: {
+                  skillId: canonicalSkill.id,
+                  browserTokenHash
+                }
+              },
+              create: {
+                skillId: canonicalSkill.id,
+                browserTokenHash,
+                value: transition.nextValue
+              },
+              update: {
+                value: transition.nextValue
+              }
+            });
           }
-        },
-        create: {
-          skillId: canonicalSkill.id,
-          browserTokenHash,
-          value: transition.nextValue
-        },
-        update: {
-          value: transition.nextValue
-        }
-      });
-    }
 
-    const [totalUpvoteCount, totalDownvoteCount] = await Promise.all([
-      transaction.skillVote.count({
-        where: {
-          skillId: canonicalSkill.id,
-          value: "up"
-        }
-      }),
-      transaction.skillVote.count({
-        where: {
-          skillId: canonicalSkill.id,
-          value: "down"
-        }
-      })
-    ]);
+          const [totalUpvoteCount, totalDownvoteCount] = await Promise.all([
+            transaction.skillVote.count({
+              where: {
+                skillId: canonicalSkill.id,
+                value: "up"
+              }
+            }),
+            transaction.skillVote.count({
+              where: {
+                skillId: canonicalSkill.id,
+                value: "down"
+              }
+            })
+          ]);
 
-    await transaction.skill.update({
-      where: {
-        id: canonicalSkill.id
-      },
-      data: {
-        totalUpvoteCount,
-        totalDownvoteCount
+          await transaction.skill.update({
+            where: {
+              id: canonicalSkill.id
+            },
+            data: {
+              totalUpvoteCount,
+              totalDownvoteCount
+            }
+          });
+        },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable
+        }
+      );
+      break;
+    } catch (error) {
+      if (!isRetryableVoteConflict(error) || attempt === MAX_VOTE_TRANSACTION_ATTEMPTS) {
+        throw error;
       }
-    });
-  });
+    }
+  }
 
   revalidatePath("/skills");
   revalidatePath(`/skills/${canonicalSkill.slug}`);

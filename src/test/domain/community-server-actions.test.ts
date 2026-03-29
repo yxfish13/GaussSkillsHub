@@ -245,4 +245,37 @@ describe("community server actions", () => {
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/skills/superpowers");
     expect(mocks.redirect).toHaveBeenCalledWith("/skills/superpowers?status=voted");
   });
+
+  it("retries retryable transaction conflicts with serializable isolation", async () => {
+    const formData = createVoteFormData({
+      direction: "up"
+    });
+    const retryableConflict = Object.assign(new Error("serialization conflict"), {
+      code: "P2034"
+    });
+
+    mocks.prisma.skillVote.findUnique.mockResolvedValueOnce(null);
+    mocks.prisma.skillVote.count.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+    mocks.prisma.$transaction
+      .mockImplementationOnce(async () => {
+        throw retryableConflict;
+      })
+      .mockImplementationOnce(async (handler: (tx: typeof mocks.prisma) => Promise<unknown>) => handler(mocks.prisma as never));
+
+    await expect(toggleSkillVote(formData)).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mocks.prisma.$transaction).toHaveBeenCalledTimes(2);
+    expect(mocks.prisma.$transaction).toHaveBeenNthCalledWith(
+      1,
+      expect.any(Function),
+      expect.objectContaining({ isolationLevel: "Serializable" }),
+    );
+    expect(mocks.prisma.$transaction).toHaveBeenNthCalledWith(
+      2,
+      expect.any(Function),
+      expect.objectContaining({ isolationLevel: "Serializable" }),
+    );
+    expect(mocks.prisma.skillVote.upsert).toHaveBeenCalledTimes(1);
+    expect(mocks.redirect).toHaveBeenCalledWith("/skills/superpowers?status=voted");
+  });
 });

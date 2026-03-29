@@ -14,14 +14,15 @@ const mocks = vi.hoisted(() => ({
     skillComment: {
       create: vi.fn()
     },
+    skill: {
+      findUnique: vi.fn(),
+      update: vi.fn()
+    },
     skillVote: {
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn()
-    },
-    skill: {
-      update: vi.fn()
     },
     $transaction: vi.fn()
   }
@@ -65,10 +66,26 @@ function createVoteFormData(overrides?: { skillId?: string; slug?: string; direc
 describe("community server actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.prisma.skill.findUnique.mockResolvedValue({
+      id: "skill-1",
+      slug: "superpowers"
+    });
     mocks.prisma.$transaction.mockImplementation(async (handler: (tx: typeof mocks.prisma) => Promise<unknown>) =>
       handler(mocks.prisma as never),
     );
     mocks.getOrCreateSkillBrowserTokenHash.mockResolvedValue("hashed-browser-token");
+  });
+
+  it("rejects mismatched skill id and slug before comment writes", async () => {
+    const formData = createCommentFormData({
+      skillId: "skill-1",
+      slug: "other-skill"
+    });
+
+    await expect(submitSkillComment(formData)).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mocks.prisma.skillComment.create).not.toHaveBeenCalled();
+    expect(mocks.redirect).toHaveBeenCalledWith("/skills?status=invalid-comment");
   });
 
   it("rejects invalid comments with commentSchema and does not create rows", async () => {
@@ -97,6 +114,16 @@ describe("community server actions", () => {
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/skills");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/skills/superpowers");
     expect(mocks.redirect).toHaveBeenCalledWith("/skills/superpowers?status=commented");
+  });
+
+  it("rejects unknown skill targets before vote writes", async () => {
+    const formData = createVoteFormData();
+    mocks.prisma.skill.findUnique.mockResolvedValueOnce(null);
+
+    await expect(toggleSkillVote(formData)).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mocks.prisma.$transaction).not.toHaveBeenCalled();
+    expect(mocks.redirect).toHaveBeenCalledWith("/skills?status=invalid-vote");
   });
 
   it("creates a new upvote when no prior vote exists", async () => {

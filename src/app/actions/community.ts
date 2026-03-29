@@ -11,6 +11,28 @@ function getStringValue(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value : "";
 }
 
+async function resolveCanonicalSkill(inputSkillId: string, inputSlug: string) {
+  if (!inputSkillId || !inputSlug) {
+    return null;
+  }
+
+  const skill = await prisma.skill.findUnique({
+    where: {
+      id: inputSkillId
+    },
+    select: {
+      id: true,
+      slug: true
+    }
+  });
+
+  if (!skill || skill.slug !== inputSlug) {
+    return null;
+  }
+
+  return skill;
+}
+
 export async function submitSkillComment(formData: FormData) {
   const skillId = getStringValue(formData.get("skillId")).trim();
   const slug = getStringValue(formData.get("slug")).trim();
@@ -19,21 +41,27 @@ export async function submitSkillComment(formData: FormData) {
     content: getStringValue(formData.get("content"))
   });
 
-  if (!skillId || !slug || !parsedComment.success) {
+  const canonicalSkill = await resolveCanonicalSkill(skillId, slug);
+
+  if (!canonicalSkill) {
+    redirect("/skills?status=invalid-comment");
+  }
+
+  if (!parsedComment.success) {
     redirect(`/skills/${slug || ""}?status=invalid-comment`);
   }
 
   await prisma.skillComment.create({
     data: {
-      skillId,
+      skillId: canonicalSkill.id,
       authorName: parsedComment.data.authorName,
       content: parsedComment.data.content
     }
   });
 
   revalidatePath("/skills");
-  revalidatePath(`/skills/${slug}`);
-  redirect(`/skills/${slug}?status=commented`);
+  revalidatePath(`/skills/${canonicalSkill.slug}`);
+  redirect(`/skills/${canonicalSkill.slug}?status=commented`);
 }
 
 export async function toggleSkillVote(formData: FormData) {
@@ -41,7 +69,13 @@ export async function toggleSkillVote(formData: FormData) {
   const slug = getStringValue(formData.get("slug")).trim();
   const parsedDirection = voteDirectionSchema.safeParse(getStringValue(formData.get("direction")).trim());
 
-  if (!skillId || !slug || !parsedDirection.success) {
+  const canonicalSkill = await resolveCanonicalSkill(skillId, slug);
+
+  if (!canonicalSkill) {
+    redirect("/skills?status=invalid-vote");
+  }
+
+  if (!parsedDirection.success) {
     redirect(`/skills/${slug || ""}?status=invalid-vote`);
   }
 
@@ -51,7 +85,7 @@ export async function toggleSkillVote(formData: FormData) {
     const existingVote = await transaction.skillVote.findUnique({
       where: {
         skillId_browserTokenHash: {
-          skillId,
+          skillId: canonicalSkill.id,
           browserTokenHash
         }
       }
@@ -77,7 +111,7 @@ export async function toggleSkillVote(formData: FormData) {
     } else if (transition.nextValue) {
       await transaction.skillVote.create({
         data: {
-          skillId,
+          skillId: canonicalSkill.id,
           browserTokenHash,
           value: transition.nextValue
         }
@@ -86,7 +120,7 @@ export async function toggleSkillVote(formData: FormData) {
 
     await transaction.skill.update({
       where: {
-        id: skillId
+        id: canonicalSkill.id
       },
       data: {
         totalUpvoteCount: {
@@ -100,6 +134,6 @@ export async function toggleSkillVote(formData: FormData) {
   });
 
   revalidatePath("/skills");
-  revalidatePath(`/skills/${slug}`);
-  redirect(`/skills/${slug}?status=voted`);
+  revalidatePath(`/skills/${canonicalSkill.slug}`);
+  redirect(`/skills/${canonicalSkill.slug}?status=voted`);
 }

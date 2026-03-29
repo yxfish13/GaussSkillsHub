@@ -1,4 +1,4 @@
-import { reviewDraftSchema, reviewIntentSchema, submissionSchema } from "@/lib/skills/validation";
+import { commentSchema, reviewDraftSchema, reviewIntentSchema, submissionSchema, voteDirectionSchema } from "@/lib/skills/validation";
 
 describe("submission schema", () => {
   it("rejects invalid bundle file types", () => {
@@ -9,6 +9,7 @@ describe("submission schema", () => {
       mode: "new",
       summary: "A short summary long enough for validation.",
       markdownContent: "# Demo\n\nThis is a valid markdown body for the demo skill.",
+      submitterName: "Ada",
       bundleMimeType: "application/pdf",
       coverMimeType: "image/png"
     });
@@ -24,6 +25,7 @@ describe("submission schema", () => {
       mode: "release",
       summary: "A short summary long enough for validation.",
       markdownContent: "# Demo\n\nThis is a valid markdown body for the demo skill.",
+      submitterName: "Ada",
       bundleMimeType: "application/zip",
       coverMimeType: "image/webp"
     });
@@ -39,6 +41,7 @@ describe("submission schema", () => {
       mode: "new",
       summary: "A short summary long enough for validation.",
       markdownContent: "# Demo\n\nThis is a valid markdown body for the demo skill.",
+      submitterName: "Ada",
       bundleMimeType: "application/zip",
       coverMimeType: ""
     });
@@ -54,6 +57,7 @@ describe("submission schema", () => {
       mode: "release",
       summary: "A short summary long enough for validation.",
       markdownContent: "# Demo\n\nThis is a valid markdown body for the demo skill.",
+      submitterName: "Ada",
       bundleMimeType: "",
       coverMimeType: "image/png"
     });
@@ -69,6 +73,7 @@ describe("submission schema", () => {
       mode: "docs",
       summary: "A short summary long enough for validation.",
       markdownContent: "# Demo\n\nThis is a valid markdown body for the demo skill.",
+      submitterName: "Ada",
       bundleMimeType: "",
       existingBundlePath: "bundles/demo-skill.zip",
       coverMimeType: "image/png"
@@ -85,6 +90,7 @@ describe("submission schema", () => {
       mode: "docs",
       summary: "A short summary long enough for validation.",
       markdownContent: "# Demo\n\nThis is a valid markdown body for the demo skill.",
+      submitterName: "Ada",
       bundleMimeType: "",
       existingBundlePath: "",
       coverMimeType: "image/png"
@@ -101,12 +107,51 @@ describe("submission schema", () => {
       mode: "docs",
       summary: "A short summary long enough for validation.",
       markdownContent: "# Demo\n\nThis is a valid markdown body for the demo skill.",
+      submitterName: "Ada",
       bundleMimeType: "",
       existingBundlePath: "covers/demo-skill.png",
       coverMimeType: "image/png"
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it("requires submitter names for public publishing", () => {
+    const result = submissionSchema.safeParse({
+      title: "Demo Skill",
+      slug: "demo-skill",
+      version: "v1.0.1",
+      mode: "new",
+      summary: "A short summary long enough for validation.",
+      markdownContent: "# Demo\n\nThis is a valid markdown body for the demo skill.",
+      submitterName: "   ",
+      bundleMimeType: "application/zip",
+      coverMimeType: ""
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("community validation", () => {
+  it("requires comment author names and content", () => {
+    const missingAuthor = commentSchema.safeParse({
+      authorName: "   ",
+      content: "这是一条足够长的评论内容。"
+    });
+    const missingContent = commentSchema.safeParse({
+      authorName: "Ada",
+      content: "   "
+    });
+
+    expect(missingAuthor.success).toBe(false);
+    expect(missingContent.success).toBe(false);
+  });
+
+  it("accepts only up or down vote directions", () => {
+    expect(voteDirectionSchema.safeParse("up").success).toBe(true);
+    expect(voteDirectionSchema.safeParse("down").success).toBe(true);
+    expect(voteDirectionSchema.safeParse("sideways").success).toBe(false);
   });
 });
 

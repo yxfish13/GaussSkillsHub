@@ -7,6 +7,8 @@ export const skillVersionStatuses = [
 ] as const;
 
 export type SkillVersionStatus = (typeof skillVersionStatuses)[number];
+export const skillVoteValues = ["up", "down"] as const;
+export type SkillVoteValue = (typeof skillVoteValues)[number];
 
 export function archivePreviousStatus(nextStatus: SkillVersionStatus) {
   return nextStatus === "approved" ? "archived" : nextStatus;

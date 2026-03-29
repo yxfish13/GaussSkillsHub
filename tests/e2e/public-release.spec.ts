@@ -11,6 +11,7 @@ test("a submission becomes public immediately and bundle download is available",
   await page.getByLabel("技能名称").fill("Superpowers E2E");
   await page.getByLabel("唯一标识").fill(slug);
   await page.getByLabel("版本号").fill(initialVersion);
+  await page.getByLabel("提交者").fill("E2E Publisher");
   await page.getByLabel("一句话简介").fill("用于测试公开发布流程的 Skill，验证版本演进与下载计数。");
   await page
     .getByLabel("详细介绍（Markdown）")
@@ -31,6 +32,7 @@ test("a submission becomes public immediately and bundle download is available",
   await expect(page.getByLabel("技能压缩包")).not.toHaveAttribute("required", "");
 
   await page.getByLabel("版本号").fill(docsVersion);
+  await page.getByLabel("提交者").fill("E2E Publisher");
   await page
     .getByLabel("详细介绍（Markdown）")
     .fill("# Superpowers E2E\n\n这是说明更新后的版本，用于验证复用附件也能直接公开。");

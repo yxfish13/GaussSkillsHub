@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { PublicVersionActions } from "@/components/skills/public-version-actions";
 import { SkillCommentForm } from "@/components/skills/skill-comment-form";
 import { SkillCommentList } from "@/components/skills/skill-comment-list";
+import { SkillVisibilityActions } from "@/components/skills/skill-visibility-actions";
 import { SkillVotePanel } from "@/components/skills/skill-vote-panel";
 import { SKILL_BROWSER_TOKEN_COOKIE_NAME, hashSkillBrowserToken } from "@/lib/skills/browser-token";
 import { SectionHeading } from "@/components/ui/section-heading";
@@ -72,6 +73,7 @@ export default async function SkillDetailPage({ params, searchParams }: SkillDet
               skillSlug={detail.skill.slug}
               currentVote={detail.currentViewerVote}
             />
+            <SkillVisibilityActions skillId={detail.skill.id} slug={detail.skill.slug} />
           </div>
 
           {selectedVersion.coverImagePath ? (

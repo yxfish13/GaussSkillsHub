@@ -1,5 +1,6 @@
 import React from "react";
 import { notFound } from "next/navigation";
+import { AdminSkillControls } from "@/components/admin/admin-skill-controls";
 import { ReviewEditor } from "@/components/admin/review-editor";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { requireAdminSession } from "@/lib/auth-server";
@@ -30,6 +31,12 @@ export default async function AdminReviewPage({ params, searchParams }: AdminRev
         eyebrow="Version Review"
         title={detail.version.title}
         description={`Reviewing ${detail.version.slug} ${detail.version.version}`}
+      />
+      <AdminSkillControls
+        skillId={detail.version.skillId}
+        slug={detail.version.slug}
+        versionId={detail.version.id}
+        visibility={detail.version.visibility}
       />
       <ReviewEditor version={detail.version} status={searchParams?.status} />
     </section>

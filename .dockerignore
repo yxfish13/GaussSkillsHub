@@ -1,0 +1,15 @@
+.git
+.gitignore
+.next
+.worktrees
+node_modules
+release
+test-results
+tests
+docs/plans
+storage/uploads/bundles/*.zip
+storage/uploads/covers/*
+!storage/uploads/covers/.gitkeep
+*.log
+.env.local
+.env

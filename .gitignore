@@ -2,3 +2,11 @@
 .worktrees/
 .next/
 node_modules/
+test-results/
+.env
+.env.local
+storage/uploads/bundles/*.zip
+storage/uploads/covers/*
+!storage/uploads/covers/.gitkeep
+release/*
+!release/README.md

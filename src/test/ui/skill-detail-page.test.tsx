@@ -19,7 +19,8 @@ vi.mock("next/headers", () => ({
 
 vi.mock("@/app/actions/community", () => ({
   toggleSkillVote: "/skills/vote",
-  submitSkillComment: "/skills/comment"
+  submitSkillComment: "/skills/comment",
+  hideSkillPublicly: "/skills/hide"
 }));
 
 import SkillDetailPage from "@/app/skills/[slug]/page";
@@ -104,6 +105,7 @@ describe("skill detail page", () => {
     expect(screen.getByText(/3 踩/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /点赞/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /点踩/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "下架这个 Skill" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /社区讨论/i })).toBeInTheDocument();
     expect(screen.getByLabelText("姓名")).toBeInTheDocument();
     expect(screen.getByLabelText("评论内容")).toBeInTheDocument();

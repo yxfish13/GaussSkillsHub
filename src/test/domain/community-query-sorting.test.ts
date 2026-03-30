@@ -32,6 +32,9 @@ describe("community query sorting", () => {
 
     expect(mocks.prisma.skill.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        where: expect.objectContaining({
+          visibility: "public"
+        }),
         orderBy: [
           { totalUpvoteCount: "desc" },
           { totalDownloadCount: "desc" },
@@ -50,6 +53,9 @@ describe("community query sorting", () => {
 
     expect(mocks.prisma.skill.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        where: expect.objectContaining({
+          visibility: "public"
+        }),
         orderBy: [
           { totalDownvoteCount: "desc" },
           { totalDownloadCount: "desc" },
@@ -68,6 +74,9 @@ describe("community query sorting", () => {
 
     expect(mocks.prisma.skill.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        where: expect.objectContaining({
+          visibility: "public"
+        }),
         orderBy: [
           { totalDownloadCount: "desc" },
           { latestApprovedVersion: { updatedAt: "desc" } },
@@ -85,6 +94,9 @@ describe("community query sorting", () => {
 
     expect(mocks.prisma.skill.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        where: expect.objectContaining({
+          visibility: "public"
+        }),
         orderBy: [{ latestApprovedVersion: { updatedAt: "desc" } }, { createdAt: "desc" }, { id: "asc" }]
       }),
     );
@@ -140,6 +152,33 @@ describe("community query sorting", () => {
     );
   });
 
+  it("returns null when a hidden skill is requested publicly", async () => {
+    mocks.prisma.skill.findUnique.mockResolvedValueOnce({
+      id: "skill-1",
+      slug: "superpowers",
+      visibility: "hidden",
+      latestApprovedVersion: {
+        id: "version-1",
+        version: "v1.0.0",
+        title: "Superpowers",
+        summary: "Hidden summary",
+        markdownContent: "# Hidden",
+        downloadCount: 0,
+        bundlePath: null,
+        bundleName: null,
+        coverImagePath: null,
+        submitterName: "Ada",
+        createdAt: new Date("2026-03-29T10:00:00.000Z"),
+        updatedAt: new Date("2026-03-29T10:00:00.000Z")
+      },
+      versions: [],
+      comments: []
+    });
+
+    await expect(getSkillDetail("superpowers")).resolves.toBeNull();
+    expect(mocks.prisma.skillVote.findUnique).not.toHaveBeenCalled();
+  });
+
   it("returns vote totals, submitter fallback, comments, and current viewer vote", async () => {
     const now = new Date("2026-03-29T10:00:00.000Z");
     const earlier = new Date("2026-03-28T10:00:00.000Z");
@@ -148,6 +187,7 @@ describe("community query sorting", () => {
     mocks.prisma.skill.findUnique.mockResolvedValueOnce({
       id: "skill-1",
       slug: "superpowers",
+      visibility: "public",
       createdAt: earlier,
       updatedAt: voteTouchedAt,
       totalDownloadCount: 10,

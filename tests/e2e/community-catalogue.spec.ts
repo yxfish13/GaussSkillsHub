@@ -41,7 +41,8 @@ test("community catalogue flow supports publish, vote ranking, and comments", as
   const targetSlug = `community-flow-${runToken}-target`;
   const targetTitle = `Community Flow Skill ${runToken} Target`;
   const commenter = "社区用户";
-  const comment = `这个技能很有用 ${runToken}`;
+  const firstComment = `第一条评论 ${runToken}`;
+  const secondComment = `第二条评论 ${runToken}`;
 
   await publishSkill(page, {
     slug: baselineSlug,
@@ -71,12 +72,28 @@ test("community catalogue flow supports publish, vote ranking, and comments", as
 
   await page.goto(`${baseUrl}/skills/${targetSlug}?version=${encodeURIComponent(version)}`);
   await page.getByLabel("姓名").fill(commenter);
-  await page.getByLabel("评论内容").fill(comment);
-  await page.getByRole("button", { name: "发表评论" }).click();
+  await page.getByLabel("评论内容").fill(firstComment);
+  await Promise.all([
+    page.waitForURL((url) => url.pathname === `/skills/${targetSlug}` && url.searchParams.has("commentId")),
+    page.getByRole("button", { name: "发表评论" }).click()
+  ]);
 
   const commentList = page.getByRole("list", { name: "评论列表" });
   await expect(commentList).toContainText(commenter);
-  await expect(commentList).toContainText(comment);
+  await expect(commentList).toContainText(firstComment);
+
+  const firstCommentUrl = page.url();
+  await page.getByLabel("姓名").fill(commenter);
+  await page.getByLabel("评论内容").fill(secondComment);
+  await Promise.all([
+    page.waitForURL((url) => url.href !== firstCommentUrl && url.pathname === `/skills/${targetSlug}` && url.searchParams.has("commentId")),
+    page.getByRole("button", { name: "发表评论" }).click()
+  ]);
+
+  const commentItems = commentList.getByRole("listitem");
+  await expect(commentItems).toHaveCount(2);
+  await expect(commentItems.nth(0)).toContainText(secondComment);
+  await expect(commentItems.nth(1)).toContainText(firstComment);
 
   await page.getByRole("button", { name: /点踩/i }).click();
   await expect(page.getByText(/^1 踩$/).first()).toBeVisible();

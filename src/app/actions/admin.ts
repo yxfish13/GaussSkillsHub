@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { removeStoredFile } from "@/lib/storage";
 import { clearAdminSession, persistAdminSession, requireAdminSession } from "@/lib/auth-server";
 import { verifyAdminPassword } from "@/lib/auth";
 import { reviewDraftSchema, reviewIntentSchema } from "@/lib/skills/validation";
@@ -14,6 +15,39 @@ import {
 
 function getStringValue(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value : "";
+}
+
+async function resolveCanonicalSkill(skillId: string, slug: string) {
+  if (!skillId || !slug) {
+    return null;
+  }
+
+  const skill = await prisma.skill.findUnique({
+    where: {
+      id: skillId
+    },
+    select: {
+      id: true,
+      slug: true
+    }
+  });
+
+  if (!skill || skill.slug !== slug) {
+    return null;
+  }
+
+  return skill;
+}
+
+function revalidateSkillAdminPaths(slug: string, versionId?: string) {
+  revalidatePath("/");
+  revalidatePath("/skills");
+  revalidatePath(`/skills/${slug}`);
+  revalidatePath("/admin");
+
+  if (versionId) {
+    revalidatePath(`/admin/versions/${versionId}`);
+  }
 }
 
 export async function loginAdmin(formData: FormData) {
@@ -43,6 +77,102 @@ export async function loginAdmin(formData: FormData) {
 export async function logoutAdmin() {
   clearAdminSession();
   redirect("/admin/login");
+}
+
+export async function hideSkillAsAdmin(formData: FormData) {
+  await requireAdminSession();
+  const skillId = getStringValue(formData.get("skillId")).trim();
+  const slug = getStringValue(formData.get("slug")).trim();
+  const versionId = getStringValue(formData.get("versionId")).trim();
+  const canonicalSkill = await resolveCanonicalSkill(skillId, slug);
+
+  if (!canonicalSkill) {
+    redirect("/admin?status=invalid-skill");
+  }
+
+  await prisma.skill.update({
+    where: {
+      id: canonicalSkill.id
+    },
+    data: {
+      visibility: "hidden"
+    }
+  });
+
+  revalidateSkillAdminPaths(canonicalSkill.slug, versionId || undefined);
+  redirect(versionId ? `/admin/versions/${versionId}?status=hidden` : "/admin?status=hidden");
+}
+
+export async function restoreSkillAsAdmin(formData: FormData) {
+  await requireAdminSession();
+  const skillId = getStringValue(formData.get("skillId")).trim();
+  const slug = getStringValue(formData.get("slug")).trim();
+  const versionId = getStringValue(formData.get("versionId")).trim();
+  const canonicalSkill = await resolveCanonicalSkill(skillId, slug);
+
+  if (!canonicalSkill) {
+    redirect("/admin?status=invalid-skill");
+  }
+
+  await prisma.skill.update({
+    where: {
+      id: canonicalSkill.id
+    },
+    data: {
+      visibility: "public"
+    }
+  });
+
+  revalidateSkillAdminPaths(canonicalSkill.slug, versionId || undefined);
+  redirect(versionId ? `/admin/versions/${versionId}?status=restored` : "/admin?status=restored");
+}
+
+export async function deleteSkillAsAdmin(formData: FormData) {
+  await requireAdminSession();
+  const skillId = getStringValue(formData.get("skillId")).trim();
+  const slug = getStringValue(formData.get("slug")).trim();
+  const canonicalSkill = await resolveCanonicalSkill(skillId, slug);
+
+  if (!canonicalSkill) {
+    redirect("/admin?status=invalid-skill");
+  }
+
+  const skill = await prisma.skill.findUnique({
+    where: {
+      id: canonicalSkill.id
+    },
+    include: {
+      versions: {
+        select: {
+          coverImagePath: true,
+          bundlePath: true
+        }
+      }
+    }
+  });
+
+  if (!skill || skill.slug !== slug) {
+    redirect("/admin?status=invalid-skill");
+  }
+
+  const filePaths = Array.from(
+    new Set(
+      skill.versions
+        .flatMap((version) => [version.coverImagePath, version.bundlePath])
+        .filter((path): path is string => Boolean(path)),
+    ),
+  );
+
+  await prisma.skill.delete({
+    where: {
+      id: skill.id
+    }
+  });
+
+  await Promise.allSettled(filePaths.map((path) => removeStoredFile(path)));
+
+  revalidateSkillAdminPaths(skill.slug);
+  redirect("/admin?status=deleted");
 }
 
 export async function submitAdminReviewAction(formData: FormData) {

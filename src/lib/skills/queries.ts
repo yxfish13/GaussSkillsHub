@@ -127,6 +127,7 @@ export async function listLatestApprovedSkills(search?: string, sort: SkillSort 
 
   const skills = await prisma.skill.findMany({
     where: {
+      visibility: "public",
       latestApprovedVersionId: {
         not: null
       },
@@ -227,6 +228,10 @@ export async function getSkillDetail(
   });
 
   if (!skill?.latestApprovedVersion) {
+    return null;
+  }
+
+  if (skill.visibility !== "public") {
     return null;
   }
 
@@ -383,7 +388,8 @@ export async function getSkillVersionForReview(id: string) {
       coverImagePath: version.coverImagePath,
       submitterName: version.submitterName,
       submitterContact: version.submitterContact,
-      submittedAt: toIsoString(version.submittedAt)
+      submittedAt: toIsoString(version.submittedAt),
+      visibility: version.skill.visibility
     },
     currentApprovedVersion: currentApprovedVersion
       ? {

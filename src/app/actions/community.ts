@@ -58,7 +58,7 @@ export async function submitSkillComment(formData: FormData) {
     redirect(`/skills/${slug || ""}?status=invalid-comment`);
   }
 
-  await prisma.skillComment.create({
+  const comment = await prisma.skillComment.create({
     data: {
       skillId: canonicalSkill.id,
       authorName: parsedComment.data.authorName,
@@ -68,7 +68,31 @@ export async function submitSkillComment(formData: FormData) {
 
   revalidatePath("/skills");
   revalidatePath(`/skills/${canonicalSkill.slug}`);
-  redirect(`/skills/${canonicalSkill.slug}?status=commented`);
+  redirect(`/skills/${canonicalSkill.slug}?status=commented&commentId=${encodeURIComponent(comment.id)}`);
+}
+
+export async function hideSkillPublicly(formData: FormData) {
+  const skillId = getStringValue(formData.get("skillId")).trim();
+  const slug = getStringValue(formData.get("slug")).trim();
+  const canonicalSkill = await resolveCanonicalSkill(skillId, slug);
+
+  if (!canonicalSkill) {
+    redirect("/skills?status=invalid-skill");
+  }
+
+  await prisma.skill.update({
+    where: {
+      id: canonicalSkill.id
+    },
+    data: {
+      visibility: "hidden"
+    }
+  });
+
+  revalidatePath("/");
+  revalidatePath("/skills");
+  revalidatePath(`/skills/${canonicalSkill.slug}`);
+  redirect("/skills?status=hidden");
 }
 
 export async function toggleSkillVote(formData: FormData) {

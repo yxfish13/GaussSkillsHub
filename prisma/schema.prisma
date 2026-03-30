@@ -25,6 +25,11 @@ enum SkillVoteValue {
   down
 }
 
+enum SkillVisibility {
+  public
+  hidden
+}
+
 model AdminUser {
   id           String             @id @default(cuid())
   username     String             @unique
@@ -37,6 +42,7 @@ model AdminUser {
 model Skill {
   id                      String         @id @default(cuid())
   slug                    String         @unique
+  visibility              SkillVisibility @default(public)
   totalDownloadCount      Int            @default(0)
   totalUpvoteCount        Int            @default(0)
   totalDownvoteCount      Int            @default(0)

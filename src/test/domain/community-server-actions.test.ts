@@ -44,7 +44,7 @@ vi.mock("@/lib/skills/browser-token", () => ({
   getOrCreateSkillBrowserTokenHash: mocks.getOrCreateSkillBrowserTokenHash
 }));
 
-import { submitSkillComment, toggleSkillVote } from "@/app/actions/community";
+import { hideSkillPublicly, submitSkillComment, toggleSkillVote } from "@/app/actions/community";
 
 function createCommentFormData(overrides?: { skillId?: string; slug?: string; authorName?: string; content?: string }) {
   const formData = new FormData();
@@ -63,12 +63,22 @@ function createVoteFormData(overrides?: { skillId?: string; slug?: string; direc
   return formData;
 }
 
+function createHideFormData(overrides?: { skillId?: string; slug?: string }) {
+  const formData = new FormData();
+  formData.set("skillId", overrides?.skillId ?? "skill-1");
+  formData.set("slug", overrides?.slug ?? "superpowers");
+  return formData;
+}
+
 describe("community server actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.prisma.skill.findUnique.mockResolvedValue({
       id: "skill-1",
       slug: "superpowers"
+    });
+    mocks.prisma.skillComment.create.mockResolvedValue({
+      id: "comment-1"
     });
     mocks.prisma.$transaction.mockImplementation(async (handler: (tx: typeof mocks.prisma) => Promise<unknown>) =>
       handler(mocks.prisma as never),
@@ -99,7 +109,7 @@ describe("community server actions", () => {
     expect(mocks.redirect).toHaveBeenCalledWith("/skills/superpowers?status=invalid-comment");
   });
 
-  it("creates comments and revalidates catalogue and detail paths", async () => {
+  it("creates comments, revalidates pages, and redirects with a fresh comment marker", async () => {
     const formData = createCommentFormData();
 
     await expect(submitSkillComment(formData)).rejects.toThrow("NEXT_REDIRECT");
@@ -113,7 +123,26 @@ describe("community server actions", () => {
     });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/skills");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/skills/superpowers");
-    expect(mocks.redirect).toHaveBeenCalledWith("/skills/superpowers?status=commented");
+    expect(mocks.redirect).toHaveBeenCalledWith("/skills/superpowers?status=commented&commentId=comment-1");
+  });
+
+  it("hides a skill publicly and redirects back to the catalogue", async () => {
+    const formData = createHideFormData();
+
+    await expect(hideSkillPublicly(formData)).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mocks.prisma.skill.update).toHaveBeenCalledWith({
+      where: {
+        id: "skill-1"
+      },
+      data: {
+        visibility: "hidden"
+      }
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/skills");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/skills/superpowers");
+    expect(mocks.redirect).toHaveBeenCalledWith("/skills?status=hidden");
   });
 
   it("rejects unknown skill targets before vote writes", async () => {

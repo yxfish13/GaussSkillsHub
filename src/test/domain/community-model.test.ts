@@ -8,12 +8,14 @@ function getModel(name: string) {
 }
 
 describe("community prisma model", () => {
-  it("adds vote counters to Skill", () => {
+  it("adds vote counters and a visibility field to Skill", () => {
     const skill = getModel("Skill");
     const fieldNames = skill.fields.map((field) => field.name);
+    const visibilityField = skill.fields.find((field) => field.name === "visibility");
 
     expect(fieldNames).toContain("totalUpvoteCount");
     expect(fieldNames).toContain("totalDownvoteCount");
+    expect(visibilityField?.type).toBe("SkillVisibility");
   });
 
   it("defines SkillComment with required core fields", () => {
@@ -42,5 +44,12 @@ describe("community prisma model", () => {
     const voteEnum = Prisma.dmmf.datamodel.enums.find((item) => item.name === "SkillVoteValue");
     const enumValues = voteEnum?.values.map((value) => value.name);
     expect(enumValues).toEqual(["up", "down"]);
+  });
+
+  it("defines SkillVisibility enum values", () => {
+    const visibilityEnum = Prisma.dmmf.datamodel.enums.find((item) => item.name === "SkillVisibility");
+    const enumValues = visibilityEnum?.values.map((value) => value.name);
+
+    expect(enumValues).toEqual(["public", "hidden"]);
   });
 });

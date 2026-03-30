@@ -141,6 +141,8 @@ docker compose up -d
 - `docker/app-entrypoint.sh`
 - `scripts/build-offline-docker-bundle.sh`
 - `README-docker.md`
+- `.github/RELEASE_TEMPLATE.md`
+- `docs/releases/internal-offline-delivery-checklist.md`
 
 不建议将这些生成产物提交到 Git：
 
